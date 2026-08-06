@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { effectiveSpec } from '../core/catalog';
 import { clampSpec, FRUSTUM_EDGES, FRUSTUM_TRIANGLES, frustum, opticalAxis } from '../core/frustum';
@@ -16,7 +16,7 @@ function flatten(vertices: ReadonlyArray<readonly [number, number, number]>): nu
   return out;
 }
 
-export default function SensorFov({
+function SensorFov({
   sensor,
   catalog,
   display,
@@ -164,3 +164,10 @@ export default function SensorFov({
     </group>
   );
 }
+
+/**
+ * `updatePose` replaces only the sensor it touches, so every other instance keeps its identity
+ * and skips the render entirely. That is what keeps a drag cheap with twenty sensors across
+ * four panes.
+ */
+export default memo(SensorFov);

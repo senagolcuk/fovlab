@@ -9,6 +9,7 @@ import Stage from './scene/Stage';
 import { useStore } from './store/useStore';
 import Sidebar from './ui/Sidebar';
 import ZoomControls from './ui/ZoomControls';
+import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 import { MONO } from './theme';
 
 const MIN_WIDTH = 1280;
@@ -38,6 +39,7 @@ function TooNarrow() {
 
 export default function App() {
   const wideEnough = useMediaQuery(`(min-width:${MIN_WIDTH}px)`);
+  useKeyboardShortcuts();
   const linkZoom = useStore((s) => s.linkZoom);
   const setLinkZoom = useStore((s) => s.setLinkZoom);
 

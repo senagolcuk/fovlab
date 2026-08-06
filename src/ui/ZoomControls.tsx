@@ -6,8 +6,7 @@ import Paper from '@mui/material/Paper';
 import RemoveIcon from '@mui/icons-material/Remove';
 import Tooltip from '@mui/material/Tooltip';
 import { useStore } from '../store/useStore';
-
-export const ZOOM_STEP = 1.25;
+import { ZOOM_STEP } from './useKeyboardShortcuts';
 
 export default function ZoomControls({ variant }: { variant: 'floating' | 'row' }) {
   const zoomBy = useStore((s) => s.zoomBy);

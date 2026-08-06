@@ -37,12 +37,35 @@ drag axis`.
 **Ask when the spec is silent.** If a doc does not cover a case, ask rather than guessing —
 especially for anything touching coordinate conventions or sign of a rotation.
 
-## Getting started
+## Running it
+
+The app lives in this repo alongside the documents.
 
 ```bash
-npm create vite@latest sensor-fov -- --template react-ts
-cd sensor-fov
-npm i three @react-three/fiber @react-three/drei zustand
-npm i @mui/material @emotion/react @emotion/styled @mui/icons-material
-npm i -D vitest @types/three
+npm install
+npm run dev        # http://localhost:5173
+npm test           # the acceptance tests from 03-geometry.md, and the rest
+npm run build      # type-check, then a static bundle in dist/
 ```
+
+Dependencies are pinned to Vite 5 and Vitest 2 because the toolchain here is Node 18. On
+Node 20+ the majors in `05-build-plan.md` work as written.
+
+`dist/` is a static SPA built with a relative asset base, so it can be dropped at
+`/tools/fov-layout` or on a subdomain without a rebuild.
+
+## Source layout
+
+See `02-architecture.md`. Two files exist that the architecture document does not list, both
+pure and both tested:
+
+- `core/viewport.ts` — the four-pane tiling, so acceptance test 10 covers the layout the app
+  actually uses rather than a parallel copy of it.
+- `core/snap.ts` — snap to the vehicle body, closed form against an axis-aligned box.
+
+## Catalogue status
+
+`src/data/sensors.json` currently ships only the four `generic-*` entries, which are
+definitional rather than products and so are verified by construction. The placeholder entries
+from `sensors.seed.json` were removed rather than shipped unverified. Growing this to the
+15–20 real models in phase 5 needs manufacturer datasheets — see the working agreement above.
