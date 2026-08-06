@@ -1,5 +1,5 @@
 {
-  "_note": "Entries with verified:false carry PLACEHOLDER numbers. Replace each one with values read off the manufacturer datasheet, set datasheetUrl, then flip verified to true. Do not ship an unverified entry. The generic-* entries are definitional, not products, so they are verified by construction.",
+  "_note": "Every entry must have a real datasheet behind it. The generic-* entries are definitional, not products, so they are verified by construction. Never add a product entry from memory: read each number off the manufacturer datasheet, set datasheetUrl, then set verified to true. An entry with verified:false is shown with a warning chip and must not be shipped.",
   "version": 1,
   "specs": [
     {
@@ -41,30 +41,6 @@
       "vfov": 40,
       "range": 100,
       "verified": true
-    },
-    {
-      "id": "placeholder-lidar-a",
-      "kind": "lidar",
-      "manufacturer": "TODO",
-      "model": "TODO — first real lidar",
-      "hfov": 120,
-      "vfov": 25,
-      "range": 120,
-      "resolution": { "h": 1200, "v": 128 },
-      "datasheetUrl": "",
-      "verified": false
-    },
-    {
-      "id": "placeholder-camera-a",
-      "kind": "camera",
-      "manufacturer": "TODO",
-      "model": "TODO — first real camera",
-      "hfov": 100,
-      "vfov": 60,
-      "range": 60,
-      "resolution": { "h": 1920, "v": 1080 },
-      "datasheetUrl": "",
-      "verified": false
     }
   ]
 }

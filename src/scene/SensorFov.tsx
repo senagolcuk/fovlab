@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { effectiveSpec } from '../core/catalog';
 import { clampSpec, FRUSTUM_EDGES, FRUSTUM_TRIANGLES, frustum, opticalAxis } from '../core/frustum';
@@ -84,6 +84,18 @@ export default function SensorFov({
 
     return { volume, edges, axis, ground, outline };
   }, [pose.x, pose.y, pose.z, pose.yaw, pose.pitch, pose.roll, spec.hfov, spec.vfov, spec.range]);
+
+  /**
+   * A pose changes on every frame of a drag, so this rebuilds constantly. r3f only disposes
+   * objects it created itself; geometry handed to it as a prop is ours to clean up, and
+   * leaking one buffer set per frame would empty the GPU during a long drag.
+   */
+  useEffect(
+    () => () => {
+      for (const g of Object.values(geometry)) g?.dispose();
+    },
+    [geometry],
+  );
 
   if (!sensor.visible) return null;
 

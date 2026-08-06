@@ -87,6 +87,33 @@ export function clamp(v: number, lo: number, hi: number): number {
 }
 
 /**
+ * The inverse of `rotationMatrix`: the yaw, pitch and roll that produced `m`.
+ *
+ * Needed by the rotate gizmo, which hands back an orientation rather than three angles.
+ * At a vertical optical axis yaw and roll describe the same turn, so roll is pinned to zero
+ * and the whole turn is reported as yaw.
+ */
+export function anglesFromMatrix(m: Mat3): { yaw: number; pitch: number; roll: number } {
+  const sinB = clamp(-m[2][0], -1, 1);
+  const b = Math.asin(sinB);
+  const GIMBAL_EPS = 1e-6;
+
+  if (Math.abs(Math.cos(b)) < GIMBAL_EPS) {
+    return {
+      yaw: Math.atan2(-m[0][1], m[1][1]) * RAD,
+      pitch: (-b * RAD) as number,
+      roll: 0,
+    };
+  }
+
+  return {
+    yaw: Math.atan2(m[1][0], m[0][0]) * RAD,
+    pitch: -b * RAD,
+    roll: Math.atan2(m[2][1], m[2][2]) * RAD,
+  };
+}
+
+/**
  * Yaw and pitch that aim the optical axis along `dir`. Roll is left to the caller.
  * Used by snap-to-body, which aligns a sensor with an outward face normal.
  */

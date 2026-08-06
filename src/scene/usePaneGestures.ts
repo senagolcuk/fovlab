@@ -4,15 +4,24 @@
  * Screen-right and screen-up come from the pane's own camera basis, and every delta is divided
  * by the pane's pixels-per-metre, so a drag stays glued to the cursor at any zoom. Zooming is
  * anchored on the cursor in the pane the gesture started in.
+ *
+ * The TOP pane also drags sensors directly. Hit-testing is a projection rather than a raycast:
+ * an orthographic pane maps world to pixels in two multiplications, so there is no reason to
+ * involve the renderer.
  */
 
 import { useEffect, useRef, type RefObject } from 'react';
+import { yawPitchFromDirection } from '../core/rotation';
+import { snapToBody } from '../core/snap';
+import type { Vec3 } from '../core/types';
 import type { ViewName } from '../core/viewport';
 import { useStore, type OrthoViewState } from '../store/useStore';
-import { isoMetresPerPixel, type OrthoName } from './views';
+import { ORTHO_DEFS, isoMetresPerPixel, orthoPaneDeltaToWorld, orthoWorldToPane, type OrthoName } from './views';
 
 const WHEEL_SENSITIVITY = 0.0015;
 const ORBIT_DEG_PER_PIXEL = 0.35;
+/** How close the pointer must be to a sensor marker to grab it, in pixels. */
+const GRAB_RADIUS = 12;
 
 export function usePaneGestures(
   ref: RefObject<HTMLElement | null>,
@@ -30,6 +39,67 @@ export function usePaneGestures(
     let lastX = 0;
     let lastY = 0;
     let panning = false;
+    /** Set while a sensor is being dragged in the TOP pane. */
+    let draggingSensor: string | null = null;
+
+    /** Nearest visible sensor marker to a pane-local point, within the grab radius. */
+    const sensorUnder = (px: number, py: number): string | null => {
+      if (name !== 'TOP') return null;
+      const state = useStore.getState();
+      const view = state.views.TOP;
+      const rect = el.getBoundingClientRect();
+
+      let best: string | null = null;
+      let bestDistance = GRAB_RADIUS;
+      for (const sensor of state.sensors) {
+        if (!sensor.visible) continue;
+        const p = orthoWorldToPane(
+          [sensor.pose.x, sensor.pose.y, sensor.pose.z],
+          ORTHO_DEFS.TOP,
+          view,
+          rect.width,
+          rect.height,
+        );
+        const d = Math.hypot(p.x - px, p.y - py);
+        if (d <= bestDistance) {
+          bestDistance = d;
+          best = sensor.id;
+        }
+      }
+      return best;
+    };
+
+    /**
+     * Moves a sensor by a pane-pixel delta, sticking it to the body when it lands close by.
+     * Alt suppresses the snap.
+     */
+    const moveSensor = (id: string, dx: number, dy: number, altKey: boolean) => {
+      const state = useStore.getState();
+      const sensor = state.sensors.find((s) => s.id === id);
+      if (!sensor) return;
+
+      const delta = orthoPaneDeltaToWorld(dx, dy, ORTHO_DEFS.TOP, state.views.TOP.zoom);
+      const target: Vec3 = [
+        sensor.pose.x + delta[0],
+        sensor.pose.y + delta[1],
+        sensor.pose.z + delta[2],
+      ];
+
+      const hit = altKey ? null : snapToBody(target, state.vehicle);
+      if (!hit) {
+        state.updatePose(id, { x: target[0], y: target[1], z: target[2] });
+        return;
+      }
+
+      const { yaw, pitch } = yawPitchFromDirection(hit.normal);
+      state.updatePose(id, {
+        x: hit.position[0],
+        y: hit.position[1],
+        z: hit.position[2],
+        yaw,
+        pitch,
+      });
+    };
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -57,21 +127,41 @@ export function usePaneGestures(
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0 && e.button !== 1) return;
+      const rect = el.getBoundingClientRect();
+      const hit =
+        e.button === 0 ? sensorUnder(e.clientX - rect.left, e.clientY - rect.top) : null;
+
       dragging = true;
-      panning = name !== 'ISO' || e.shiftKey;
+      draggingSensor = hit;
+      panning = hit === null && (name !== 'ISO' || e.shiftKey);
       lastX = e.clientX;
       lastY = e.clientY;
+      if (hit) useStore.getState().select(hit);
       el.setPointerCapture(e.pointerId);
-      el.style.cursor = panning ? 'grabbing' : 'move';
+      el.style.cursor = hit ? 'grabbing' : panning ? 'grabbing' : 'move';
     };
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return;
+      if (!dragging) {
+        if (name === 'TOP') {
+          const rect = el.getBoundingClientRect();
+          el.style.cursor = sensorUnder(e.clientX - rect.left, e.clientY - rect.top)
+            ? 'grab'
+            : '';
+        }
+        return;
+      }
+
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
       lastX = e.clientX;
       lastY = e.clientY;
       if (dx === 0 && dy === 0) return;
+
+      if (draggingSensor) {
+        moveSensor(draggingSensor, dx, dy, e.altKey);
+        return;
+      }
 
       const store = useStore.getState();
 
@@ -88,12 +178,12 @@ export function usePaneGestures(
         const rect = el.getBoundingClientRect();
         const mpp = isoMetresPerPixel(iso, rect.height);
         const az = (iso.azimuth * Math.PI) / 180;
-        const el_ = (iso.elevation * Math.PI) / 180;
-        const right: [number, number, number] = [-Math.sin(az), Math.cos(az), 0];
-        const up: [number, number, number] = [
-          -Math.sin(el_) * Math.cos(az),
-          -Math.sin(el_) * Math.sin(az),
-          Math.cos(el_),
+        const elev = (iso.elevation * Math.PI) / 180;
+        const right: Vec3 = [-Math.sin(az), Math.cos(az), 0];
+        const up: Vec3 = [
+          -Math.sin(elev) * Math.cos(az),
+          -Math.sin(elev) * Math.sin(az),
+          Math.cos(elev),
         ];
         store.setIsoView({
           target: [
@@ -113,6 +203,7 @@ export function usePaneGestures(
     const endDrag = (e: PointerEvent) => {
       if (!dragging) return;
       dragging = false;
+      draggingSensor = null;
       el.style.cursor = '';
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
     };

@@ -95,6 +95,63 @@ export function isoMetresPerPixel(view: IsoViewState, paneHeight: number): numbe
   return (2 * view.distance * Math.tan((ISO_FOV / 2) * DEG)) / paneHeight;
 }
 
+/* --------------------------------------------------------------------------- projection */
+
+/**
+ * World point to pane pixels, for an orthographic pane. Used to hit-test sensor markers and
+ * to place the gizmo proximity zone without going near the 3D event system.
+ */
+export function orthoWorldToPane(
+  p: Vec3,
+  def: OrthoDef,
+  view: OrthoViewState,
+  paneWidth: number,
+  paneHeight: number,
+): { x: number; y: number } {
+  const u = p[0] * def.right.x + p[1] * def.right.y + p[2] * def.right.z;
+  const v = p[0] * def.up.x + p[1] * def.up.y + p[2] * def.up.z;
+  return {
+    x: (u - view.pan[0]) * view.zoom + paneWidth / 2,
+    y: paneHeight / 2 - (v - view.pan[1]) * view.zoom,
+  };
+}
+
+/** A pointer delta in pane pixels, as a world displacement in that pane's plane. */
+export function orthoPaneDeltaToWorld(dx: number, dy: number, def: OrthoDef, zoom: number): Vec3 {
+  const du = dx / zoom;
+  const dv = -dy / zoom;
+  return [
+    def.right.x * du + def.up.x * dv,
+    def.right.y * du + def.up.y * dv,
+    def.right.z * du + def.up.z * dv,
+  ];
+}
+
+/** World point to pane pixels for the ISO pane. Null when the point is behind the camera. */
+export function projectToIsoPane(
+  p: Vec3,
+  view: IsoViewState,
+  paneWidth: number,
+  paneHeight: number,
+): { x: number; y: number } | null {
+  if (paneWidth <= 0 || paneHeight <= 0) return null;
+
+  const position = isoCameraPosition(view);
+  const z = position.clone().sub(new THREE.Vector3(...view.target)).normalize();
+  const x = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 0, 1), z).normalize();
+  const y = new THREE.Vector3().crossVectors(z, x);
+
+  const d = new THREE.Vector3(p[0], p[1], p[2]).sub(position);
+  const depth = -d.dot(z); // the camera looks down its own -Z
+  if (depth <= 1e-6) return null;
+
+  const tanHalf = Math.tan((ISO_FOV / 2) * DEG);
+  const ndcY = d.dot(y) / (depth * tanHalf);
+  const ndcX = d.dot(x) / (depth * tanHalf * (paneWidth / paneHeight));
+
+  return { x: ((1 + ndcX) * paneWidth) / 2, y: ((1 - ndcY) * paneHeight) / 2 };
+}
+
 /* ------------------------------------------------------------------------ scene bounds */
 
 /**

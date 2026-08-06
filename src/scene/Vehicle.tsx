@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import type { Vehicle } from '../core/types';
 
@@ -37,6 +37,9 @@ export default function VehicleBody({
     );
     return g;
   }, [length]);
+
+  useEffect(() => () => edges.dispose(), [edges]);
+  useEffect(() => () => nose.dispose(), [nose]);
 
   const wheelPositions = useMemo(() => {
     const x = wheelbase / 2;

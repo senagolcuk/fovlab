@@ -8,6 +8,9 @@ import {
   fitOrtho,
   isoCameraPosition,
   isoCameraQuaternion,
+  orthoPaneDeltaToWorld,
+  orthoWorldToPane,
+  projectToIsoPane,
   sceneBounds,
 } from '../views';
 
@@ -145,6 +148,67 @@ describe('iso camera', () => {
     const q = isoCameraQuaternion(isoCameraPosition(view), view.target);
     const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
     expect(camUp.z).toBeGreaterThan(0);
+  });
+});
+
+describe('projection', () => {
+  const view = { zoom: 40, pan: [0, 0] as [number, number] };
+
+  it('puts a point at the pan centre in the middle of the pane', () => {
+    const p = orthoWorldToPane([0, 0, 0], ORTHO_DEFS.TOP, view, 600, 400);
+    expect(p).toEqual({ x: 300, y: 200 });
+  });
+
+  it('puts the nose above centre and the vehicle right to the right, in TOP', () => {
+    const nose = orthoWorldToPane([2.4, 0, 0], ORTHO_DEFS.TOP, view, 600, 400);
+    expect(nose.y).toBeLessThan(200);
+    expect(nose.x).toBe(300);
+
+    const right = orthoWorldToPane([0, -1, 0], ORTHO_DEFS.TOP, view, 600, 400);
+    expect(right.x).toBeGreaterThan(300);
+  });
+
+  it('follows the pan', () => {
+    const panned = { zoom: 40, pan: [3, -2] as [number, number] };
+    const p = orthoWorldToPane([-2, -3, 0], ORTHO_DEFS.TOP, panned, 600, 400);
+    // world (-2,-3) is u = -y = 3, v = x = -2 — exactly the pan centre.
+    expect(p).toEqual({ x: 300, y: 200 });
+  });
+
+  it('inverts exactly through orthoPaneDeltaToWorld', () => {
+    for (const def of Object.values(ORTHO_DEFS)) {
+      const before = orthoWorldToPane([1, 2, 3], def, view, 600, 400);
+      const delta = orthoPaneDeltaToWorld(37, -21, def, view.zoom);
+      const after = orthoWorldToPane(
+        [1 + delta[0], 2 + delta[1], 3 + delta[2]],
+        def,
+        view,
+        600,
+        400,
+      );
+      expect(after.x - before.x).toBeCloseTo(37, 9);
+      expect(after.y - before.y).toBeCloseTo(-21, 9);
+    }
+  });
+
+  it('projects the orbit target to the centre of the ISO pane', () => {
+    const iso = { azimuth: 35, elevation: 24, distance: 14, target: [1, 2, 0.5] as Vec3 };
+    const p = projectToIsoPane(iso.target, iso, 600, 400)!;
+    expect(p.x).toBeCloseTo(300, 6);
+    expect(p.y).toBeCloseTo(200, 6);
+  });
+
+  it('rejects a point behind the ISO camera', () => {
+    const iso = { azimuth: 0, elevation: 0, distance: 10, target: [0, 0, 0] as Vec3 };
+    // The camera sits at x = +10 looking back at the origin, so x = 20 is behind it.
+    expect(projectToIsoPane([20, 0, 0], iso, 600, 400)).toBeNull();
+  });
+
+  it('puts a point above the target higher up the ISO pane', () => {
+    const iso = { azimuth: 0, elevation: 0, distance: 10, target: [0, 0, 0] as Vec3 };
+    const p = projectToIsoPane([0, 0, 1], iso, 600, 400)!;
+    expect(p.y).toBeLessThan(200);
+    expect(p.x).toBeCloseTo(300, 6);
   });
 });
 

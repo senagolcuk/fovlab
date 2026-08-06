@@ -13,6 +13,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Divider from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
 import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import { effectiveSpec } from '../core/catalog';
 import { FOV_MAX, FOV_MIN, RANGE_MIN, frustum } from '../core/frustum';
@@ -46,6 +48,8 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
   const updateSensor = useStore((s) => s.updateSensor);
   const updatePose = useStore((s) => s.updatePose);
   const removeSensor = useStore((s) => s.removeSensor);
+  const dragMode = useStore((s) => s.dragMode);
+  const setDragMode = useStore((s) => s.setDragMode);
   const [colorAnchor, setColorAnchor] = useState<HTMLElement | null>(null);
 
   const spec = effectiveSpec(sensor, catalog);
@@ -72,6 +76,32 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
       <CatalogPicker sensor={sensor} />
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          Drag in ISO
+        </Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={dragMode}
+          onChange={(_, v) => v && setDragMode(v)}
+        >
+          <ToggleButton value="off" sx={{ px: 1.5, py: 0.25 }}>
+            Off
+          </ToggleButton>
+          <ToggleButton value="translate" sx={{ px: 1.5, py: 0.25 }}>
+            Move
+          </ToggleButton>
+          <ToggleButton value="rotate" sx={{ px: 1.5, py: 0.25 }}>
+            Rotate
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      <Typography variant="caption" sx={{ color: 'text.disabled', mt: -1 }}>
+        Drag the marker in TOP to place it. Near the body it snaps to the surface and faces
+        outward — hold Alt to suppress.
+      </Typography>
 
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         <TextField

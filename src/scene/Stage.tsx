@@ -15,7 +15,9 @@ import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
 import type { Rect } from '../core/types';
 import { useStore, type ViewsState } from '../store/useStore';
 import { IsoCamera, OrthoCamera } from './Cameras';
+import Gizmo from './Gizmo';
 import SceneContent from './SceneContent';
+import { useCanvasPointerGate } from './useCanvasPointerGate';
 import { usePaneGestures } from './usePaneGestures';
 import { AXIS_HINTS, ORTHO_DEFS, fitIso, fitOrtho, sceneBounds, type OrthoName } from './views';
 import { MONO } from '../theme';
@@ -100,6 +102,7 @@ function Pane({
     >
       {name === 'ISO' ? <IsoCamera /> : <OrthoCamera name={name as OrthoName} />}
       <SceneContent />
+      {name === 'ISO' && <Gizmo />}
     </View>
   );
 }
@@ -157,6 +160,8 @@ export default function Stage() {
   }, [fitNonce, size.width, size.height, fitPanes]);
 
   const onFitPane = useCallback((name: ViewName) => fitPanes(name), [fitPanes]);
+
+  useCanvasPointerGate(hostRef, rects.ISO);
 
   return (
     <Box

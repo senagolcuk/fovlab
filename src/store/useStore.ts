@@ -72,6 +72,8 @@ export interface AppState {
   dragMode: DragMode;
 
   views: ViewsState;
+  /** True while the ISO gizmo owns the pointer, so the pane must not also orbit. */
+  gizmoDragging: boolean;
   /** Bumped to ask the stage — which is the only thing that knows the pane sizes — to refit. */
   fitNonce: number;
 
@@ -86,6 +88,7 @@ export interface AppState {
   setDisplay(patch: Partial<DisplayOptions>): void;
   setLinkZoom(on: boolean): void;
   setDragMode(mode: DragMode): void;
+  setGizmoDragging(on: boolean): void;
 
   /** `origin` names the pane the gesture started in; linked zoom fans it out to the rest. */
   zoomBy(factor: number, origin?: ViewName): void;
@@ -158,6 +161,7 @@ export const useStore = create<AppState>()((set, get) => ({
   linkZoom: true,
   dragMode: 'off',
   views: DEFAULT_VIEWS,
+  gizmoDragging: false,
   fitNonce: 0,
 
   setVehicle(patch) {
@@ -240,7 +244,11 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   setDragMode(mode) {
-    set({ dragMode: mode });
+    set({ dragMode: mode, gizmoDragging: mode === 'off' ? false : get().gizmoDragging });
+  },
+
+  setGizmoDragging(on) {
+    set({ gizmoDragging: on });
   },
 
   zoomBy(factor, origin) {
