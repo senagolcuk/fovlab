@@ -1,9 +1,14 @@
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import Stage from './scene/Stage';
+import { useStore } from './store/useStore';
 import Sidebar from './ui/Sidebar';
+import ZoomControls from './ui/ZoomControls';
 import { MONO } from './theme';
 
 const MIN_WIDTH = 1280;
@@ -33,6 +38,8 @@ function TooNarrow() {
 
 export default function App() {
   const wideEnough = useMediaQuery(`(min-width:${MIN_WIDTH}px)`);
+  const linkZoom = useStore((s) => s.linkZoom);
+  const setLinkZoom = useStore((s) => s.setLinkZoom);
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -52,13 +59,28 @@ export default function App() {
             ISO 8855 · +X forward · +Y left · +Z up
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={linkZoom}
+                onChange={(e) => setLinkZoom(e.target.checked)}
+              />
+            }
+            label="Link zoom"
+            slotProps={{ typography: { variant: 'body2' } }}
+          />
+          <ZoomControls variant="row" />
         </Toolbar>
       </AppBar>
 
       {wideEnough ? (
         <Box sx={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
           <Sidebar />
-          <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0, bgcolor: '#F4F1F7' }} />
+          <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0 }}>
+            <Stage />
+            <ZoomControls variant="floating" />
+          </Box>
         </Box>
       ) : (
         <TooNarrow />

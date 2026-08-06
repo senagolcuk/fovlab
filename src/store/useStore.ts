@@ -8,7 +8,9 @@
 
 import { create } from 'zustand';
 import { parseCatalog } from '../core/catalog';
-import type { Layout, Pose, SensorInstance, SensorSpec, Vehicle } from '../core/types';
+import { clamp } from '../core/rotation';
+import type { Layout, Pose, SensorInstance, SensorSpec, Vec3, Vehicle } from '../core/types';
+import { VIEW_NAMES, type ViewName } from '../core/viewport';
 import catalogJson from '../data/sensors.json';
 import { DEFAULT_VEHICLE, loadLayout, newId, saveLayout } from './persist';
 
@@ -24,6 +26,41 @@ export interface DisplayOptions {
 
 export type DragMode = 'off' | 'translate' | 'rotate';
 
+/**
+ * Camera state per pane. `zoom` is pixels per metre, which makes a pointer drag map to world
+ * metres by a single division and keeps the drag glued to the cursor. `pan` is the world
+ * position of the pane centre, expressed along that pane's screen-right and screen-up axes.
+ */
+export interface OrthoViewState {
+  zoom: number;
+  pan: [number, number];
+}
+
+export interface IsoViewState {
+  azimuth: number; // degrees about +Z
+  elevation: number; // degrees, clamped to ±83
+  distance: number; // metres from the target
+  target: Vec3;
+}
+
+export interface ViewsState {
+  TOP: OrthoViewState;
+  FRONT: OrthoViewState;
+  LEFT: OrthoViewState;
+  ISO: IsoViewState;
+}
+
+export const ZOOM_LIMITS: [number, number] = [1, 4000]; // pixels per metre
+export const ISO_DISTANCE_LIMITS: [number, number] = [0.8, 600];
+export const ELEVATION_LIMIT = 83;
+
+export const DEFAULT_VIEWS: ViewsState = {
+  TOP: { zoom: 60, pan: [0, 0] },
+  FRONT: { zoom: 60, pan: [0, 0] },
+  LEFT: { zoom: 60, pan: [0, 0] },
+  ISO: { azimuth: 35, elevation: 24, distance: 14, target: [0, 0, 0.8] },
+};
+
 export interface AppState {
   vehicle: Vehicle;
   sensors: SensorInstance[];
@@ -33,6 +70,10 @@ export interface AppState {
   display: DisplayOptions;
   linkZoom: boolean;
   dragMode: DragMode;
+
+  views: ViewsState;
+  /** Bumped to ask the stage — which is the only thing that knows the pane sizes — to refit. */
+  fitNonce: number;
 
   setVehicle(patch: Partial<Vehicle>): void;
   addSensor(specId?: string): string;
@@ -45,6 +86,13 @@ export interface AppState {
   setDisplay(patch: Partial<DisplayOptions>): void;
   setLinkZoom(on: boolean): void;
   setDragMode(mode: DragMode): void;
+
+  /** `origin` names the pane the gesture started in; linked zoom fans it out to the rest. */
+  zoomBy(factor: number, origin?: ViewName): void;
+  setOrthoView(name: 'TOP' | 'FRONT' | 'LEFT', patch: Partial<OrthoViewState>): void;
+  setIsoView(patch: Partial<IsoViewState>): void;
+  setViews(views: ViewsState): void;
+  requestFit(): void;
 }
 
 export const DEFAULT_DISPLAY: DisplayOptions = {
@@ -72,6 +120,7 @@ export const SENSOR_COLORS = [
 export const catalog = parseCatalog(catalogJson);
 
 const restored = typeof localStorage === 'undefined' ? null : loadLayout();
+
 
 function nextColor(sensors: SensorInstance[]): string {
   return SENSOR_COLORS[sensors.length % SENSOR_COLORS.length];
@@ -102,6 +151,8 @@ export const useStore = create<AppState>()((set, get) => ({
   display: DEFAULT_DISPLAY,
   linkZoom: true,
   dragMode: 'off',
+  views: DEFAULT_VIEWS,
+  fitNonce: 0,
 
   setVehicle(patch) {
     set((s) => ({ vehicle: { ...s.vehicle, ...patch } }));
@@ -184,6 +235,46 @@ export const useStore = create<AppState>()((set, get) => ({
 
   setDragMode(mode) {
     set({ dragMode: mode });
+  },
+
+  zoomBy(factor, origin) {
+    set((s) => {
+      const targets: ViewName[] =
+        origin === undefined || s.linkZoom ? VIEW_NAMES : [origin];
+      const views = { ...s.views };
+      for (const name of targets) {
+        if (name === 'ISO') {
+          views.ISO = {
+            ...views.ISO,
+            distance: clamp(views.ISO.distance / factor, ...ISO_DISTANCE_LIMITS),
+          };
+        } else {
+          views[name] = { ...views[name], zoom: clamp(views[name].zoom * factor, ...ZOOM_LIMITS) };
+        }
+      }
+      return { views };
+    });
+  },
+
+  setOrthoView(name, patch) {
+    set((s) => ({ views: { ...s.views, [name]: { ...s.views[name], ...patch } } }));
+  },
+
+  setIsoView(patch) {
+    set((s) => {
+      const next = { ...s.views.ISO, ...patch };
+      next.elevation = clamp(next.elevation, -ELEVATION_LIMIT, ELEVATION_LIMIT);
+      next.distance = clamp(next.distance, ...ISO_DISTANCE_LIMITS);
+      return { views: { ...s.views, ISO: next } };
+    });
+  },
+
+  setViews(views) {
+    set({ views });
+  },
+
+  requestFit() {
+    set((s) => ({ fitNonce: s.fitNonce + 1 }));
   },
 }));
 
