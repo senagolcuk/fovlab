@@ -73,6 +73,13 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
 
   const fmt = (v: number, digits = 2) => v.toFixed(digits);
 
+  /**
+   * A catalogue entry holds the datasheet figure even when it is wider than the pyramid model
+   * can represent. Say so on the field rather than quietly showing a different number.
+   */
+  const clampNote = (value: number) =>
+    value > FOV_MAX ? `drawn at ${FOV_MAX}°` : undefined;
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
       <CatalogPicker sensor={sensor} />
@@ -212,7 +219,8 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           step={1}
           value={spec.hfov}
           min={FOV_MIN}
-          max={FOV_MAX}
+          max={Math.max(FOV_MAX, spec.hfov)}
+          helperText={clampNote(spec.hfov)}
           inherited={inherited && sensor.override?.hfov === undefined}
           onChange={(hfov) => setFov({ hfov })}
         />
@@ -222,7 +230,8 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           step={1}
           value={spec.vfov}
           min={FOV_MIN}
-          max={FOV_MAX}
+          max={Math.max(FOV_MAX, spec.vfov)}
+          helperText={clampNote(spec.vfov)}
           inherited={inherited && sensor.override?.vfov === undefined}
           onChange={(vfov) => setFov({ vfov })}
         />

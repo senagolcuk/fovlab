@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FOV, describeFov, effectiveSpec, isInherited, parseCatalog } from '../catalog';
-import { clampFov, clampRange, FOV_MAX, FOV_MIN, RANGE_MIN } from '../frustum';
+import { clampFov, clampRange, clampSpec, FOV_MAX, FOV_MIN, RANGE_MIN } from '../frustum';
 import type { SensorInstance, SensorSpec } from '../types';
+import shippedCatalog from '../../data/sensors.json';
 
 const catalog: SensorSpec[] = [
   {
@@ -101,5 +102,41 @@ describe('parseCatalog', () => {
   it('returns an empty catalogue for junk input', () => {
     expect(parseCatalog(null)).toEqual([]);
     expect(parseCatalog({ specs: 'nope' })).toEqual([]);
+  });
+});
+
+describe('the shipped catalogue file', () => {
+  const specs = parseCatalog(shippedCatalog);
+
+  it('parses every entry', () => {
+    expect(specs).toHaveLength(
+      (shippedCatalog as { specs: unknown[] }).specs.length,
+    );
+  });
+
+  it('has a unique id per entry', () => {
+    expect(new Set(specs.map((s) => s.id)).size).toBe(specs.length);
+  });
+
+  it('leaves the ISX031 fixtures flagged, since only their HFOV is confirmed', () => {
+    const isx = specs.filter((s) => s.id.startsWith('sensing-world-isx031'));
+    expect(isx).toHaveLength(3);
+    for (const s of isx) {
+      expect(s.verified).toBe(false);
+      expect(s.datasheetUrl).toBeUndefined();
+    }
+    expect(isx.map((s) => s.hfov)).toEqual([60, 120, 190]);
+  });
+
+  it('keeps the 190° lens at its datasheet figure and clamps only at render', () => {
+    const spec = specs.find((s) => s.id === 'sensing-world-isx031-190')!;
+    expect(spec.hfov).toBe(190); // what the engineer looked up
+    expect(clampSpec(spec).hfov).toBe(FOV_MAX); // what a flat far plane can represent
+  });
+
+  it('ships every generic entry verified, since they are definitional', () => {
+    for (const s of specs.filter((x) => x.id.startsWith('generic-'))) {
+      expect(s.verified).toBe(true);
+    }
   });
 });

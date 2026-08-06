@@ -6,7 +6,7 @@
  * into an instance at add time.
  */
 
-import { clampFov, clampRange } from './frustum';
+import { clampRange } from './frustum';
 import type { FovSpec, SensorInstance, SensorKind, SensorSpec } from './types';
 
 /** Used when an instance has no spec and no custom block. */
@@ -44,6 +44,11 @@ export function describeFov(spec: FovSpec): string {
 
 const KINDS: SensorKind[] = ['camera', 'lidar', 'radar'];
 
+/** A field of view a datasheet could plausibly state. Wider than FOV_MAX is allowed here. */
+function isSaneAngle(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 360;
+}
+
 /** Drops malformed entries rather than trusting the JSON file. */
 export function parseCatalog(raw: unknown): SensorSpec[] {
   const specs = (raw as { specs?: unknown } | null)?.specs;
@@ -62,14 +67,19 @@ export function parseCatalog(raw: unknown): SensorSpec[] {
       continue;
     }
 
+    // The catalogue records what the datasheet says, not what the renderer can draw. A lens
+    // wider than FOV_MAX is kept at its real figure and clamped at render time by clampSpec,
+    // so the editor can show the engineer the number they looked up.
+    if (!isSaneAngle(e.hfov) || !isSaneAngle(e.vfov)) continue;
+
     seen.add(e.id);
     const spec: SensorSpec = {
       id: e.id,
       kind: e.kind as SensorKind,
       manufacturer: e.manufacturer,
       model: e.model,
-      hfov: clampFov(e.hfov),
-      vfov: clampFov(e.vfov),
+      hfov: e.hfov,
+      vfov: e.vfov,
       range: clampRange(e.range),
       verified: e.verified === true,
     };
