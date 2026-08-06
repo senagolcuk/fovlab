@@ -1,5 +1,7 @@
 import Box from '@mui/material/Box';
+import DisplayPanel from './DisplayPanel';
 import NavigationPanel from './NavigationPanel';
+import SensorList from './SensorList';
 import VehiclePanel from './VehiclePanel';
 
 export const SIDEBAR_WIDTH = 360;
@@ -20,6 +22,8 @@ export default function Sidebar() {
       }}
     >
       <VehiclePanel />
+      <SensorList />
+      <DisplayPanel />
       <NavigationPanel />
     </Box>
   );

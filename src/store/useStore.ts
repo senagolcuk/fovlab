@@ -130,10 +130,16 @@ function nextName(sensors: SensorInstance[]): string {
   return `SENSOR ${sensors.length + 1}`;
 }
 
-/** New sensors land on the front bumper centreline, looking forward. */
+/**
+ * New sensors land just clear of the front bumper, on the centreline, looking forward.
+ * `SURFACE_OFFSET` keeps them off the box face so a fresh sensor does not open with the
+ * occlusion warning already showing.
+ */
+const SURFACE_OFFSET = 0.02;
+
 function defaultPose(vehicle: Vehicle): Pose {
   return {
-    x: Number((vehicle.length / 2).toFixed(3)),
+    x: Number((vehicle.length / 2 + SURFACE_OFFSET).toFixed(3)),
     y: 0,
     z: Number((vehicle.clearance + 0.4).toFixed(3)),
     yaw: 0,
