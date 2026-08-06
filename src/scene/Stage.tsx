@@ -101,7 +101,7 @@ function Pane({
       }}
     >
       {name === 'ISO' ? <IsoCamera /> : <OrthoCamera name={name as OrthoName} />}
-      <SceneContent />
+      <SceneContent blindSectors={name === 'TOP'} />
       {name === 'ISO' && <Gizmo />}
     </View>
   );

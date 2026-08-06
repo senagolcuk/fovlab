@@ -1,4 +1,5 @@
 import Box from '@mui/material/Box';
+import CoverageReport from './CoverageReport';
 import DisplayPanel from './DisplayPanel';
 import NavigationPanel from './NavigationPanel';
 import SensorList from './SensorList';
@@ -24,6 +25,7 @@ export default function Sidebar() {
       <VehiclePanel />
       <SensorList />
       <DisplayPanel />
+      <CoverageReport />
       <NavigationPanel />
     </Box>
   );

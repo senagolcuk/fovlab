@@ -7,9 +7,12 @@
  */
 
 import { create } from 'zustand';
-import { parseCatalog } from '../core/catalog';
+import { effectiveSpec, parseCatalog } from '../core/catalog';
+import { blindSpotReport, type BlindSpotReport } from '../core/coverage';
+import { frustum } from '../core/frustum';
+import { groundPolygon } from '../core/ground';
 import { clamp } from '../core/rotation';
-import type { Layout, Pose, SensorInstance, SensorSpec, Vec3, Vehicle } from '../core/types';
+import type { Layout, Pose, SensorInstance, SensorSpec, Vec2, Vec3, Vehicle } from '../core/types';
 import { VIEW_NAMES, type ViewName } from '../core/viewport';
 import catalogJson from '../data/sensors.json';
 import { DEFAULT_VEHICLE, loadLayout, newId, saveLayout } from './persist';
@@ -22,6 +25,8 @@ export interface DisplayOptions {
   opacity: number; // 0.05 - 0.70
   grid: boolean;
   wheels: boolean;
+  /** Shade uncovered azimuth sectors on the ground, in the TOP pane only. */
+  blindSectors: boolean;
 }
 
 export type DragMode = 'off' | 'translate' | 'rotate';
@@ -71,6 +76,14 @@ export interface AppState {
   linkZoom: boolean;
   dragMode: DragMode;
 
+  /**
+   * The blind spot report, recomputed on a debounce rather than on every change. Derived
+   * state rather than an action, because both the sidebar panel and the TOP overlay read it
+   * and neither should pay for it twice.
+   */
+  blindReport: BlindSpotReport | null;
+  blindReportStale: boolean;
+
   views: ViewsState;
   /** True while the ISO gizmo owns the pointer, so the pane must not also orbit. */
   gizmoDragging: boolean;
@@ -106,6 +119,7 @@ export const DEFAULT_DISPLAY: DisplayOptions = {
   opacity: 0.3,
   grid: true,
   wheels: true,
+  blindSectors: true,
 };
 
 /** Distinct at a glance against the violet UI and against each other. */
@@ -160,6 +174,8 @@ export const useStore = create<AppState>()((set, get) => ({
   display: DEFAULT_DISPLAY,
   linkZoom: true,
   dragMode: 'off',
+  blindReport: null,
+  blindReportStale: true,
   views: DEFAULT_VIEWS,
   gizmoDragging: false,
   fitNonce: 0,
@@ -296,6 +312,42 @@ export const useStore = create<AppState>()((set, get) => ({
 export function currentLayout(state: AppState = useStore.getState()): Layout {
   return { version: 1, vehicle: state.vehicle, sensors: state.sensors };
 }
+
+/* --------------------------------------------------------------- blind spot report */
+
+/**
+ * 72 sectors against every ground polygon is far too much to run inside a drag, so this settles
+ * 150 ms after the last change. One subscription for the whole app: every reader takes the same
+ * result out of the store.
+ */
+export const REPORT_DEBOUNCE_MS = 150;
+let reportTimer: ReturnType<typeof setTimeout> | undefined;
+
+function recomputeBlindReport(state: AppState) {
+  const polygons: Vec2[][] = [];
+  for (const sensor of state.sensors) {
+    if (!sensor.visible) continue;
+    const poly = groundPolygon(frustum(sensor.pose, effectiveSpec(sensor, state.catalog)));
+    if (poly) polygons.push(poly);
+  }
+  useStore.setState({
+    blindReport: blindSpotReport(polygons, state.vehicle),
+    blindReportStale: false,
+  });
+}
+
+function scheduleBlindReport(state: AppState) {
+  clearTimeout(reportTimer);
+  if (!state.blindReportStale) useStore.setState({ blindReportStale: true });
+  reportTimer = setTimeout(() => recomputeBlindReport(useStore.getState()), REPORT_DEBOUNCE_MS);
+}
+
+useStore.subscribe((state, prev) => {
+  if (state.vehicle === prev.vehicle && state.sensors === prev.sensors) return;
+  scheduleBlindReport(state);
+});
+
+scheduleBlindReport(useStore.getState());
 
 /* -------------------------------------------------------------------------- autosave */
 

@@ -32,7 +32,7 @@ export interface BlindSpotReport {
 }
 
 /** Radius at which a ray from the origin leaves the footprint rectangle. */
-function footprintExitRadius(cos: number, sin: number, vehicle: Vehicle): number {
+export function footprintExitRadius(cos: number, sin: number, vehicle: Vehicle): number {
   const hl = vehicle.length / 2;
   const hw = vehicle.width / 2;
   const tx = Math.abs(cos) < 1e-12 ? Infinity : hl / Math.abs(cos);
