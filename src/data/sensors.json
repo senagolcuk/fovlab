@@ -1,0 +1,70 @@
+{
+  "_note": "Entries with verified:false carry PLACEHOLDER numbers. Replace each one with values read off the manufacturer datasheet, set datasheetUrl, then flip verified to true. Do not ship an unverified entry. The generic-* entries are definitional, not products, so they are verified by construction.",
+  "version": 1,
+  "specs": [
+    {
+      "id": "generic-surround-camera-120",
+      "kind": "camera",
+      "manufacturer": "Generic",
+      "model": "Surround camera 120°",
+      "hfov": 120,
+      "vfov": 90,
+      "range": 15,
+      "verified": true
+    },
+    {
+      "id": "generic-front-camera-60",
+      "kind": "camera",
+      "manufacturer": "Generic",
+      "model": "Forward camera 60°",
+      "hfov": 60,
+      "vfov": 34,
+      "range": 150,
+      "verified": true
+    },
+    {
+      "id": "generic-corner-radar",
+      "kind": "radar",
+      "manufacturer": "Generic",
+      "model": "Corner radar",
+      "hfov": 150,
+      "vfov": 20,
+      "range": 80,
+      "verified": true
+    },
+    {
+      "id": "generic-spinning-lidar",
+      "kind": "lidar",
+      "manufacturer": "Generic",
+      "model": "Roof lidar 360°",
+      "hfov": 179.4,
+      "vfov": 40,
+      "range": 100,
+      "verified": true
+    },
+    {
+      "id": "placeholder-lidar-a",
+      "kind": "lidar",
+      "manufacturer": "TODO",
+      "model": "TODO — first real lidar",
+      "hfov": 120,
+      "vfov": 25,
+      "range": 120,
+      "resolution": { "h": 1200, "v": 128 },
+      "datasheetUrl": "",
+      "verified": false
+    },
+    {
+      "id": "placeholder-camera-a",
+      "kind": "camera",
+      "manufacturer": "TODO",
+      "model": "TODO — first real camera",
+      "hfov": 100,
+      "vfov": 60,
+      "range": 60,
+      "resolution": { "h": 1920, "v": 1080 },
+      "datasheetUrl": "",
+      "verified": false
+    }
+  ]
+}
