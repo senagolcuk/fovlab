@@ -11,11 +11,13 @@
  */
 
 import { useEffect, useRef, type RefObject } from 'react';
+import { Vector3 } from 'three';
 import { yawPitchFromDirection } from '../core/rotation';
 import { snapToBody } from '../core/snap';
 import type { Vec3 } from '../core/types';
 import type { ViewName } from '../core/viewport';
 import { useStore, type OrthoViewState } from '../store/useStore';
+import { getPaneScene } from './exportBridge';
 import { gizmoHandleUnderPointer } from './gizmoHandle';
 import { ORTHO_DEFS, isoMetresPerPixel, orthoPaneDeltaToWorld, orthoWorldToPane, type OrthoName } from './views';
 import { wheelPixels } from './wheel';
@@ -24,6 +26,8 @@ const WHEEL_SENSITIVITY = 0.0015;
 const ORBIT_DEG_PER_PIXEL = 0.35;
 /** How close the pointer must be to a sensor marker to grab it, in pixels. */
 const GRAB_RADIUS = 12;
+/** A double-click is deliberate, so the ISO pick may be a touch more forgiving. */
+const ISO_PICK_RADIUS = 20;
 
 export function usePaneGestures(
   ref: RefObject<HTMLElement | null>,
@@ -220,7 +224,46 @@ export function usePaneGestures(
       if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
     };
 
-    const onDoubleClick = () => fitRef.current();
+    /**
+     * Nearest visible sensor to a pane point in ISO, by projecting each marker with the live
+     * camera. Only offered while a drag mode is on, matching how the TOP pane guards its picks.
+     */
+    const isoSensorUnder = (px: number, py: number): string | null => {
+      const entry = getPaneScene('ISO');
+      if (!entry) return null;
+      const rect = el.getBoundingClientRect();
+      const p = new Vector3();
+      let best: string | null = null;
+      let bestDistance = ISO_PICK_RADIUS;
+      for (const sensor of useStore.getState().sensors) {
+        if (!sensor.visible) continue;
+        p.set(sensor.pose.x, sensor.pose.y, sensor.pose.z).project(entry.camera);
+        // z > 1 means the point is behind the camera; its projection would be meaningless.
+        if (p.z > 1) continue;
+        const sx = (p.x * 0.5 + 0.5) * rect.width;
+        const sy = (1 - (p.y * 0.5 + 0.5)) * rect.height;
+        const d = Math.hypot(sx - px, sy - py);
+        if (d <= bestDistance) {
+          bestDistance = d;
+          best = sensor.id;
+        }
+      }
+      return best;
+    };
+
+    const onDoubleClick = (e: MouseEvent) => {
+      // In ISO, while placing or rotating, a double-click on a sensor selects it rather than
+      // refitting the pane — the fit is still there on empty space.
+      if (name === 'ISO' && useStore.getState().dragMode !== 'off') {
+        const rect = el.getBoundingClientRect();
+        const hit = isoSensorUnder(e.clientX - rect.left, e.clientY - rect.top);
+        if (hit) {
+          useStore.getState().select(hit);
+          return;
+        }
+      }
+      fitRef.current();
+    };
     const onContextMenu = (e: MouseEvent) => e.preventDefault();
 
     /**

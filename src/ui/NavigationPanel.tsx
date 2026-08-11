@@ -8,6 +8,7 @@ const KEYS: Array<[string, string]> = [
   ['Drag in ISO', 'Orbit'],
   ['Shift + drag in ISO', 'Pan'],
   ['Double-click a pane', 'Fit that pane'],
+  ['Double-click a sensor in ISO', 'Selects it, while a drag mode is on'],
   ['+  /  −', 'Zoom in / out'],
   ['F', 'Fit all views'],
   ['Delete / Backspace', 'Removes the selected sensor, while a drag mode is on'],
