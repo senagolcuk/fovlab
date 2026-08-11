@@ -15,7 +15,7 @@ import Menu from '@mui/material/Menu';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { effectiveSpec } from '../core/catalog';
-import { FOV_MAX, FOV_MIN, RANGE_MIN, frustum } from '../core/frustum';
+import { FOV_INPUT_MAX, FOV_MAX, FOV_MIN, RANGE_MIN, frustum } from '../core/frustum';
 import { groundCoverage, isInsideBody } from '../core/ground';
 import type { SensorInstance } from '../core/types';
 import { LIMITS } from '../store/persist';
@@ -189,7 +189,7 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           step={1}
           value={spec.hfov}
           min={FOV_MIN}
-          max={Math.max(FOV_MAX, spec.hfov)}
+          max={Math.max(FOV_INPUT_MAX, spec.hfov)}
           helperText={clampNote(spec.hfov)}
           inherited={inherited && sensor.override?.hfov === undefined}
           onChange={(hfov) => setFov({ hfov })}
@@ -200,7 +200,7 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           step={1}
           value={spec.vfov}
           min={FOV_MIN}
-          max={Math.max(FOV_MAX, spec.vfov)}
+          max={Math.max(FOV_INPUT_MAX, spec.vfov)}
           helperText={clampNote(spec.vfov)}
           inherited={inherited && sensor.override?.vfov === undefined}
           onChange={(vfov) => setFov({ vfov })}

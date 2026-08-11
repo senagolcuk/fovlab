@@ -9,6 +9,12 @@ import type { Frustum, FovSpec, Mat3, Pose, Vec3 } from './types';
 /** Keeps tan(fov/2) finite. */
 export const FOV_MIN = 0.2;
 export const FOV_MAX = 179.4;
+/**
+ * The widest angle a datasheet may state. A pyramid cannot draw past `FOV_MAX`, but fisheye and
+ * other wide sensors really do quote figures beyond 180°, so the number is recorded faithfully and
+ * only the geometry is clamped (see `clampSpec`).
+ */
+export const FOV_INPUT_MAX = 360;
 export const RANGE_MIN = 0.05;
 
 /** apex to each far corner, then around the far plane */
