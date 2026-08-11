@@ -54,7 +54,7 @@ export default function App() {
       >
         <Toolbar variant="dense" sx={{ gap: 2 }}>
           <Typography variant="h6" sx={{ color: 'primary.main' }}>
-            Sensor FOV Layout
+            fovlab
           </Typography>
           <Typography
             sx={{ fontFamily: MONO, fontSize: 12, color: 'text.secondary' }}
