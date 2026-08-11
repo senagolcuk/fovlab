@@ -86,7 +86,9 @@ export function Readout({
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         {label}
       </Typography>
-      <Typography sx={{ fontFamily: MONO, fontSize: 12.5, color: color ?? 'text.primary' }}>
+      <Typography
+        sx={{ fontFamily: MONO, fontSize: 12.5, color: color ?? 'text.primary', textAlign: 'right' }}
+      >
         {value}
       </Typography>
     </Box>
