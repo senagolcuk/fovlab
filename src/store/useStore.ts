@@ -295,7 +295,8 @@ export const useStore = create<AppState>()((set, get) => ({
       visible: true,
       pose: defaultPose(vehicle),
     };
-    if (!specId) inst.custom = { hfov: 90, vfov: 60, range: 10 };
+    // A fresh custom sensor starts at a 50 m range — a sensible default the user then tunes.
+    if (!specId) inst.custom = { hfov: 90, vfov: 60, range: 50 };
     // A sensor that did not exist a moment ago arrives locked. Drag mode is global and sticky,
     // so without this the new sensor inherits whatever the last one was left in and the first
     // stray drag moves it.

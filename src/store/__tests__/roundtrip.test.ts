@@ -36,7 +36,7 @@ describe('sensor lifecycle', () => {
     expect(s.pose.x).toBeCloseTo(DEFAULT_VEHICLE.length / 2 + 0.02, 6);
     expect(isInsideBody(s.pose, DEFAULT_VEHICLE)).toBe(false); // no warning on a fresh sensor
     expect(s.specId).toBeNull();
-    expect(s.custom).toEqual({ hfov: 90, vfov: 60, range: 10 });
+    expect(s.custom).toEqual({ hfov: 90, vfov: 60, range: 50 });
   });
 
   it('gives consecutive sensors different colours', () => {
