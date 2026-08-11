@@ -15,7 +15,7 @@ import { clamp } from '../core/rotation';
 import type { Layout, Pose, SensorInstance, SensorSpec, Vec2, Vec3, Vehicle } from '../core/types';
 import { VIEW_NAMES, type ViewName } from '../core/viewport';
 import catalogJson from '../data/sensors.json';
-import { DEFAULT_VEHICLE, loadLayout, newId, saveLayout } from './persist';
+import { DEFAULT_PREFS, DEFAULT_VEHICLE, loadLayout, loadPrefs, newId, savePrefs, saveLayout } from './persist';
 
 export interface DisplayOptions {
   volume: boolean;
@@ -24,7 +24,13 @@ export interface DisplayOptions {
   axis: boolean;
   opacity: number; // 0.05 - 0.70
   grid: boolean;
+  /** Spacing of the fine grid lines, in metres. */
+  gridSize: number;
+  /** The vehicle body itself. Off leaves the sensors and their volumes on their own. */
+  vehicle: boolean;
   wheels: boolean;
+  /** Dimension lines over the three orthographic panes. */
+  dimensions: boolean;
   /** Shade uncovered azimuth sectors on the ground, in the TOP pane only. */
   blindSectors: boolean;
 }
@@ -96,8 +102,26 @@ export interface AppState {
   updatePose(id: string, patch: Partial<Pose>): void;
   duplicateSensor(id: string): void;
   removeSensor(id: string): void;
+  /** Drops every sensor. The vehicle and the display options are left alone. */
+  clearSensors(): void;
   select(id: string | null): void;
   importLayout(l: Layout): void;
+
+  /** True while the delete prompt is open, naming the sensor it is asking about. */
+  pendingDeleteId: string | null;
+  /** Cleared for good once the engineer ticks "don't ask again". Persisted per person. */
+  askBeforeDelete: boolean;
+  /** Opens the prompt, or deletes outright if the prompt has been turned off. */
+  requestDeleteSensor(id: string): void;
+  confirmPendingDelete(dontAskAgain: boolean): void;
+  cancelPendingDelete(): void;
+  setAskBeforeDelete(on: boolean): void;
+
+  /** Layout history. Covers the vehicle and the sensors — not the cameras or display options. */
+  canUndo: boolean;
+  canRedo: boolean;
+  undo(): void;
+  redo(): void;
   setDisplay(patch: Partial<DisplayOptions>): void;
   setLinkZoom(on: boolean): void;
   setDragMode(mode: DragMode): void;
@@ -118,20 +142,44 @@ export const DEFAULT_DISPLAY: DisplayOptions = {
   axis: true,
   opacity: 0.3,
   grid: true,
+  gridSize: 1,
+  vehicle: true,
   wheels: true,
+  dimensions: false,
   blindSectors: true,
 };
 
-/** Distinct at a glance against the violet UI and against each other. */
+/** Grid spacing bounds, in metres. */
+export const GRID_SIZE_LIMITS: readonly [number, number] = [0.01, 10];
+
+/**
+ * Twelve soft hues, one per sensor before the list wraps.
+ *
+ * Data colours, not house colours: they stay outside `PALETTE` because a dozen of them have to
+ * stay tellable apart, which six brand colours cannot do. They are pastel rather than saturated
+ * because a layout with eight overlapping volumes is easier to read in soft colour — but not
+ * lighter than that, for three reasons the suite pins:
+ *
+ * - the sidebar swatch is a small dot on white and disappears below about 2.2:1;
+ * - two sensors must stay apart in the wireframe, which draws at 0.75 opacity;
+ * - none of them may read as the blind-sector red, or an uncovered sector looks like coverage.
+ *
+ * The volume fill at 0.30 is the one layer where they nearly converge; that is fine, since the
+ * axis, the ground outline and the marker all draw opaque and carry the identity.
+ */
 export const SENSOR_COLORS = [
-  '#6750A4',
-  '#B3261E',
-  '#00696E',
-  '#8C5000',
-  '#0061A4',
-  '#3F6B2B',
-  '#7D5260',
-  '#5B5891',
+  '#E8827C', // coral
+  '#E89A57', // apricot
+  '#C9A63F', // gold
+  '#93B14B', // olive
+  '#5FAF6B', // green
+  '#4FBBA0', // seafoam
+  '#4FA3B5', // teal
+  '#76ADE0', // sky
+  '#5C7FD0', // blue
+  '#A38ADE', // lilac
+  '#BE6FC0', // orchid
+  '#E58AAE', // rose
 ];
 
 export const catalog = parseCatalog(catalogJson);
@@ -179,6 +227,10 @@ export const useStore = create<AppState>()((set, get) => ({
   views: DEFAULT_VIEWS,
   gizmoDragging: false,
   fitNonce: 0,
+  pendingDeleteId: null,
+  askBeforeDelete: typeof localStorage === 'undefined' ? DEFAULT_PREFS.askBeforeDelete : loadPrefs().askBeforeDelete,
+  canUndo: false,
+  canRedo: false,
 
   setVehicle(patch) {
     set((s) => ({ vehicle: { ...s.vehicle, ...patch } }));
@@ -195,7 +247,10 @@ export const useStore = create<AppState>()((set, get) => ({
       pose: defaultPose(vehicle),
     };
     if (!specId) inst.custom = { hfov: 90, vfov: 60, range: 10 };
-    set({ sensors: [...sensors, inst], selectedId: inst.id });
+    // A sensor that did not exist a moment ago arrives locked. Drag mode is global and sticky,
+    // so without this the new sensor inherits whatever the last one was left in and the first
+    // stray drag moves it.
+    set({ sensors: [...sensors, inst], selectedId: inst.id, dragMode: 'off', gizmoDragging: false });
     return inst.id;
   },
 
@@ -230,7 +285,8 @@ export const useStore = create<AppState>()((set, get) => ({
     const at = sensors.indexOf(src) + 1;
     const next = sensors.slice();
     next.splice(at, 0, copy);
-    set({ sensors: next, selectedId: copy.id });
+    // Same reasoning as addSensor: a duplicate is a new sensor and arrives locked.
+    set({ sensors: next, selectedId: copy.id, dragMode: 'off', gizmoDragging: false });
   },
 
   removeSensor(id) {
@@ -241,6 +297,47 @@ export const useStore = create<AppState>()((set, get) => ({
         selectedId: s.selectedId === id ? (sensors[0]?.id ?? null) : s.selectedId,
       };
     });
+  },
+
+  clearSensors() {
+    set({ sensors: [], selectedId: null, gizmoDragging: false, pendingDeleteId: null });
+  },
+
+  requestDeleteSensor(id) {
+    if (!get().sensors.some((x) => x.id === id)) return;
+    if (get().askBeforeDelete) {
+      set({ pendingDeleteId: id });
+      return;
+    }
+    get().removeSensor(id);
+  },
+
+  confirmPendingDelete(dontAskAgain) {
+    const id = get().pendingDeleteId;
+    if (dontAskAgain) {
+      set({ askBeforeDelete: false });
+      savePrefs({ askBeforeDelete: false });
+    }
+    set({ pendingDeleteId: null });
+    if (id) get().removeSensor(id);
+  },
+
+  cancelPendingDelete() {
+    set({ pendingDeleteId: null });
+  },
+
+  setAskBeforeDelete(on) {
+    set({ askBeforeDelete: on });
+    savePrefs({ askBeforeDelete: on });
+  },
+
+  // Declared below, next to the history they act on.
+  undo() {
+    historyUndo();
+  },
+
+  redo() {
+    historyRedo();
   },
 
   select(id) {
@@ -348,6 +445,112 @@ useStore.subscribe((state, prev) => {
 });
 
 scheduleBlindReport(useStore.getState());
+
+/* --------------------------------------------------------------------------- history */
+
+/**
+ * Undo / redo over the layout.
+ *
+ * Snapshots are whole `vehicle` + `sensors` pairs. Both are treated immutably everywhere in this
+ * store, so a snapshot is two references rather than a copy, and holding fifty of them costs
+ * nothing.
+ *
+ * The subtlety is a drag: `updatePose` fires every frame, and those hundred writes are one edit
+ * as far as the engineer is concerned. So history records on the **leading** edge of a burst —
+ * the state before the first write — and stays quiet until the writes stop for
+ * `HISTORY_COALESCE_MS`. One drag, one undo step.
+ *
+ * Cameras, display options and the selection stay out: undoing should walk back the work, not
+ * the view you happen to be looking through.
+ */
+
+export const HISTORY_COALESCE_MS = 400;
+const HISTORY_LIMIT = 50;
+
+interface Snapshot {
+  vehicle: Vehicle;
+  sensors: SensorInstance[];
+}
+
+let past: Snapshot[] = [];
+let future: Snapshot[] = [];
+/** Set while undo/redo writes, so the subscription does not record its own work. */
+let applyingHistory = false;
+let burstTimer: ReturnType<typeof setTimeout> | undefined;
+
+const snapshot = (s: AppState): Snapshot => ({ vehicle: s.vehicle, sensors: s.sensors });
+
+function syncHistoryFlags() {
+  const canUndo = past.length > 0;
+  const canRedo = future.length > 0;
+  const state = useStore.getState();
+  if (state.canUndo !== canUndo || state.canRedo !== canRedo) {
+    useStore.setState({ canUndo, canRedo });
+  }
+}
+
+function applySnapshot(snap: Snapshot) {
+  applyingHistory = true;
+  const selected = useStore.getState().selectedId;
+  useStore.setState({
+    vehicle: snap.vehicle,
+    sensors: snap.sensors,
+    // The selection can name a sensor this snapshot never had.
+    selectedId: snap.sensors.some((x) => x.id === selected) ? selected : null,
+    pendingDeleteId: null,
+    gizmoDragging: false,
+  });
+  applyingHistory = false;
+  syncHistoryFlags();
+}
+
+/** Ends the current burst, so the step we are about to take is never folded into it. */
+function closeBurst() {
+  clearTimeout(burstTimer);
+  burstTimer = undefined;
+}
+
+function historyUndo() {
+  const previous = past.pop();
+  if (!previous) return;
+  closeBurst();
+  future.unshift(snapshot(useStore.getState()));
+  applySnapshot(previous);
+}
+
+function historyRedo() {
+  const next = future.shift();
+  if (!next) return;
+  closeBurst();
+  past.push(snapshot(useStore.getState()));
+  applySnapshot(next);
+}
+
+/** Test seam: history is module state, so a suite that shares the store has to clear it. */
+export function resetHistory() {
+  past = [];
+  future = [];
+  closeBurst();
+  syncHistoryFlags();
+}
+
+useStore.subscribe((state, prev) => {
+  if (applyingHistory) return;
+  if (state.vehicle === prev.vehicle && state.sensors === prev.sensors) return;
+
+  if (burstTimer === undefined) {
+    past.push(snapshot(prev));
+    if (past.length > HISTORY_LIMIT) past.shift();
+    // A fresh edit abandons whatever was undone: there is no branching history here.
+    future = [];
+    syncHistoryFlags();
+  }
+
+  clearTimeout(burstTimer);
+  burstTimer = setTimeout(() => {
+    burstTimer = undefined;
+  }, HISTORY_COALESCE_MS);
+});
 
 /* -------------------------------------------------------------------------- autosave */
 

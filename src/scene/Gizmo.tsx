@@ -14,6 +14,7 @@ import { rotationMatrix } from '../core/rotation';
 import { snapToBody } from '../core/snap';
 import type { Mat3, Pose, Vec3 } from '../core/types';
 import { useStore } from '../store/useStore';
+import { registerGizmoControls } from './gizmoHandle';
 
 function matrixFromPose(pose: Pose): THREE.Matrix4 {
   const R = rotationMatrix(pose.yaw, pose.pitch, pose.roll);
@@ -45,6 +46,10 @@ export default function Gizmo() {
   const proxy = useRef<THREE.Object3D>(new THREE.Object3D());
   const dragging = useRef(false);
   const altHeld = useRef(false);
+  const controls = useRef<{ axis: string | null; dragging: boolean } | null>(null);
+
+  // The ISO pane's orbit reads this to decide whether a pointerdown belongs to the gizmo.
+  useEffect(() => () => registerGizmoControls(null), []);
 
   // TransformControls hands back an orientation, not the modifier keys that produced it.
   useEffect(() => {
@@ -109,6 +114,10 @@ export default function Gizmo() {
       <primitive object={proxy.current} />
       <TransformControls
         key={selectedId ?? 'none'}
+        ref={(instance: unknown) => {
+          controls.current = instance as { axis: string | null; dragging: boolean } | null;
+          registerGizmoControls(controls.current);
+        }}
         object={proxy}
         mode={dragMode}
         size={0.8}

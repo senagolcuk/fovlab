@@ -16,6 +16,15 @@ export type Mat3 = [
   [number, number, number],
 ];
 
+/**
+ * Plan-view outline of the body. All three are one family — a rectangle shrunk by a corner
+ * radius and inflated back by it — so every distance the tool measures stays closed form.
+ * `cylinder` is that radius taken to its maximum: a circle when length equals width, and a
+ * stadium when they differ, since a plan view with two different dimensions has no other
+ * honest reading of "cylinder".
+ */
+export type VehicleShape = 'box' | 'rounded' | 'cylinder';
+
 export interface Vehicle {
   length: number; // along +X, m
   width: number; // along +Y, m
@@ -23,6 +32,9 @@ export interface Vehicle {
   clearance: number; // ground to underside of the box, m
   wheelbase: number; // m
   wheelRadius: number; // m
+  shape: VehicleShape;
+  /** Plan-view corner radius in metres. Only read when `shape` is `rounded`. */
+  cornerRadius: number;
 }
 
 export type SensorKind = 'camera' | 'lidar' | 'radar';

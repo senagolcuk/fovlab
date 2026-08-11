@@ -7,7 +7,9 @@
 
 import { clampFov, clampRange } from '../core/frustum';
 import { clamp } from '../core/rotation';
-import type { FovSpec, Layout, Pose, SensorInstance, Vehicle } from '../core/types';
+import type { FovSpec, Layout, Pose, SensorInstance, Vehicle, VehicleShape } from '../core/types';
+
+const SHAPES: VehicleShape[] = ['box', 'rounded', 'cylinder'];
 
 export const STORAGE_KEY = 'sensor-fov.layout.v1';
 
@@ -18,6 +20,8 @@ export const DEFAULT_VEHICLE: Vehicle = {
   clearance: 0.2,
   wheelbase: 2.8,
   wheelRadius: 0.34,
+  shape: 'box',
+  cornerRadius: 0.3,
 };
 
 /** Legal ranges for every editable number, in metres or degrees. */
@@ -28,6 +32,8 @@ export const LIMITS = {
   clearance: [0, 2],
   wheelbase: [0.3, 25],
   wheelRadius: [0.05, 1.5],
+  // The upper bound is per-vehicle — half the shorter side — so `cornerRadius()` clamps again.
+  cornerRadius: [0, 3],
   x: [-40, 40],
   y: [-20, 20],
   z: [-5, 20],
@@ -68,6 +74,11 @@ export function sanitizeVehicle(raw: unknown): Vehicle {
     clearance: limited(v.clearance, 'clearance', DEFAULT_VEHICLE.clearance),
     wheelbase: limited(v.wheelbase, 'wheelbase', DEFAULT_VEHICLE.wheelbase),
     wheelRadius: limited(v.wheelRadius, 'wheelRadius', DEFAULT_VEHICLE.wheelRadius),
+    // A layout written before shapes existed has neither field, and must stay a box.
+    shape: SHAPES.includes(v.shape as VehicleShape)
+      ? (v.shape as VehicleShape)
+      : DEFAULT_VEHICLE.shape,
+    cornerRadius: limited(v.cornerRadius, 'cornerRadius', DEFAULT_VEHICLE.cornerRadius),
   };
 }
 
@@ -119,7 +130,8 @@ function sanitizeSensor(raw: unknown, index: number): SensorInstance | null {
     id: newId(),
     name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 64) : `SENSOR ${index + 1}`,
     specId,
-    color: typeof s.color === 'string' && HEX.test(s.color) ? s.color : '#6750A4',
+    // Duplicated rather than imported from the store, which imports this module.
+    color: typeof s.color === 'string' && HEX.test(s.color) ? s.color : '#E8827C',
     visible: s.visible !== false,
     pose: sanitizePose(s.pose),
   };
@@ -174,6 +186,44 @@ export function clearLayout(): void {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* ignore */
+  }
+}
+
+/* ----------------------------------------------------------------------------- prefs */
+
+/**
+ * Preferences live under their own key rather than in the layout: they belong to the person, not
+ * to the drawing, and exporting a layout must not carry one engineer's "don't ask again" to
+ * everyone who opens the file.
+ */
+const PREFS_KEY = 'sensor-fov.prefs.v1';
+
+export interface Prefs {
+  /** False once the engineer has ticked "don't ask again" on the delete prompt. */
+  askBeforeDelete: boolean;
+}
+
+export const DEFAULT_PREFS: Prefs = { askBeforeDelete: true };
+
+export function loadPrefs(): Prefs {
+  try {
+    const text = localStorage.getItem(PREFS_KEY);
+    if (!text) return DEFAULT_PREFS;
+    const parsed: unknown = JSON.parse(text);
+    if (typeof parsed !== 'object' || parsed === null) return DEFAULT_PREFS;
+    const { askBeforeDelete } = parsed as Partial<Prefs>;
+    // Only an explicit false turns the prompt off; anything unreadable keeps asking.
+    return { askBeforeDelete: askBeforeDelete !== false };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
+
+export function savePrefs(prefs: Prefs): void {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // Quota or a private-mode block. The prompt simply keeps asking.
   }
 }
 

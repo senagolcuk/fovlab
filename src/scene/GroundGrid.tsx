@@ -1,30 +1,54 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 
-/** 1 m lines out to here, 10 m lines beyond. A 1 m grid at 200 m is noise, not information. */
-const FINE_HALF = 25;
-const COARSE_HALF = 100;
+/** A heavier line every this many cells. */
 const MAJOR_EVERY = 10;
+/** Fine cells drawn either side of the origin, then major cells beyond. */
+const FINE_CELLS = 25;
+const MAJOR_CELLS = 10;
 
-/** Ground grid on z = 0, with a heavier line every 10 m and the X and Y axes picked out. */
-export default function GroundGrid({ visible }: { visible: boolean }) {
+/**
+ * How far the two grids reach, for a given cell size in metres.
+ *
+ * Counted in cells rather than metres, so the line count is the same whatever the spacing is:
+ * a 10 mm grid does not cost more to draw than a 1 m one, it just covers less ground. At the
+ * 1 m default this reproduces the original fixed extents exactly — fine to 25 m, coarse to 100 m.
+ */
+export function gridExtents(size: number): {
+  fineHalf: number;
+  majorStep: number;
+  coarseHalf: number;
+} {
+  const majorStep = MAJOR_EVERY * size;
+  return {
+    fineHalf: FINE_CELLS * size,
+    majorStep,
+    coarseHalf: MAJOR_CELLS * majorStep,
+  };
+}
+
+/** Ground grid on z = 0, with a heavier line every 10 cells and the X and Y axes picked out. */
+export default function GroundGrid({ visible, size }: { visible: boolean; size: number }) {
   const { minor, major, axes } = useMemo(() => {
     const minorPts: number[] = [];
     const majorPts: number[] = [];
+    const { fineHalf, majorStep, coarseHalf } = gridExtents(size);
 
-    for (let i = -FINE_HALF; i <= FINE_HALF; i++) {
-      if (i === 0 || i % MAJOR_EVERY === 0) continue;
-      minorPts.push(i, -FINE_HALF, 0, i, FINE_HALF, 0);
-      minorPts.push(-FINE_HALF, i, 0, FINE_HALF, i, 0);
+    for (let n = -FINE_CELLS; n <= FINE_CELLS; n++) {
+      if (n === 0 || n % MAJOR_EVERY === 0) continue;
+      const i = n * size;
+      minorPts.push(i, -fineHalf, 0, i, fineHalf, 0);
+      minorPts.push(-fineHalf, i, 0, fineHalf, i, 0);
     }
 
-    for (let i = -COARSE_HALF; i <= COARSE_HALF; i += MAJOR_EVERY) {
-      if (i === 0) continue;
-      majorPts.push(i, -COARSE_HALF, 0, i, COARSE_HALF, 0);
-      majorPts.push(-COARSE_HALF, i, 0, COARSE_HALF, i, 0);
+    for (let n = -MAJOR_CELLS; n <= MAJOR_CELLS; n++) {
+      if (n === 0) continue;
+      const i = n * majorStep;
+      majorPts.push(i, -coarseHalf, 0, i, coarseHalf, 0);
+      majorPts.push(-coarseHalf, i, 0, coarseHalf, i, 0);
     }
 
-    const axisPts = [-COARSE_HALF, 0, 0, COARSE_HALF, 0, 0, 0, -COARSE_HALF, 0, 0, COARSE_HALF, 0];
+    const axisPts = [-coarseHalf, 0, 0, coarseHalf, 0, 0, 0, -coarseHalf, 0, 0, coarseHalf, 0];
 
     const build = (pts: number[]) => {
       const g = new THREE.BufferGeometry();
@@ -33,20 +57,31 @@ export default function GroundGrid({ visible }: { visible: boolean }) {
     };
 
     return { minor: build(minorPts), major: build(majorPts), axes: build(axisPts) };
-  }, []);
+  }, [size]);
+
+  // r3f only disposes what it created itself, and these are rebuilt whenever the spacing moves.
+  useEffect(
+    () => () => {
+      minor.dispose();
+      major.dispose();
+      axes.dispose();
+    },
+    [minor, major, axes],
+  );
 
   if (!visible) return null;
 
   return (
     <group renderOrder={-1}>
+      {/* Cool greys stepped towards the slate, so the grid recedes under the palette. */}
       <lineSegments geometry={minor}>
-        <lineBasicMaterial color="#DCD6E0" transparent opacity={0.8} depthWrite={false} />
+        <lineBasicMaterial color="#D6DEE6" transparent opacity={0.8} depthWrite={false} />
       </lineSegments>
       <lineSegments geometry={major}>
-        <lineBasicMaterial color="#B6ADBF" depthWrite={false} />
+        <lineBasicMaterial color="#A8B6C6" depthWrite={false} />
       </lineSegments>
       <lineSegments geometry={axes}>
-        <lineBasicMaterial color="#8A7F95" depthWrite={false} />
+        <lineBasicMaterial color="#7C8CA3" depthWrite={false} />
       </lineSegments>
     </group>
   );

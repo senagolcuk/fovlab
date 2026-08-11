@@ -1,20 +1,39 @@
-/** Material 3 light, violet primary. Roboto for the interface, Roboto Mono for every number. */
+/** Roboto for the interface, Roboto Mono for every number an engineer reads off the screen. */
 
 import { createTheme } from '@mui/material/styles';
 
 export const MONO = "'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 
+/**
+ * The house palette. Six fixed colours, so anything added later picks from these rather than
+ * inventing a neighbouring shade.
+ */
+export const PALETTE = {
+  blue: '#1E79D3',
+  slate: '#495F81',
+  sky: '#B0CED7',
+  orange: '#FFA52C',
+  offWhite: '#F1F1F1',
+  grey: '#BFBFBF',
+} as const;
+
+/** Panel headers: the sky at low alpha, so a header separates without becoming a second colour. */
+export const HEADER_TINT = 'rgba(176, 206, 215, 0.38)';
+/** Enough lift to read as a raised card on the off-white sidebar, not a drop shadow. */
+export const CARD_SHADOW = '0 1px 3px rgba(73, 95, 129, 0.16)';
+
 export const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#6750A4', light: '#EADDFF', dark: '#4F378B', contrastText: '#FFFFFF' },
-    secondary: { main: '#625B71', light: '#E8DEF8', dark: '#4A4458', contrastText: '#FFFFFF' },
+    primary: { main: PALETTE.blue, light: PALETTE.sky, dark: PALETTE.slate, contrastText: '#FFFFFF' },
+    secondary: { main: PALETTE.slate, light: PALETTE.sky, dark: '#33455F', contrastText: '#FFFFFF' },
     error: { main: '#B3261E', light: '#F9DEDC', dark: '#8C1D18', contrastText: '#FFFFFF' },
-    warning: { main: '#8C5000', light: '#FFDDB3' },
+    // Orange carries dark text: white on it is about 1.9:1, which is unreadable.
+    warning: { main: PALETTE.orange, light: '#FFE3B8', dark: '#B36F00', contrastText: '#16202E' },
     success: { main: '#3F6B2B' },
-    background: { default: '#FEF7FF', paper: '#FFFFFF' },
-    text: { primary: '#1D1B20', secondary: '#49454F' },
-    divider: '#CAC4D0',
+    background: { default: PALETTE.offWhite, paper: '#FFFFFF' },
+    text: { primary: '#16202E', secondary: PALETTE.slate },
+    divider: PALETTE.grey,
   },
   shape: { borderRadius: 12 },
   typography: {

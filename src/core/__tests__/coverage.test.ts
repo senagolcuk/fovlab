@@ -11,6 +11,8 @@ const vehicle: Vehicle = {
   clearance: 0.2,
   wheelbase: 2.8,
   wheelRadius: 0.34,
+  shape: 'box',
+  cornerRadius: 0,
 };
 
 /** Four surround cameras on the roof centre, 100° each, covering the full azimuth. */

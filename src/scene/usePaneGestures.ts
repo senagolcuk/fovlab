@@ -16,7 +16,9 @@ import { snapToBody } from '../core/snap';
 import type { Vec3 } from '../core/types';
 import type { ViewName } from '../core/viewport';
 import { useStore, type OrthoViewState } from '../store/useStore';
+import { gizmoHandleUnderPointer } from './gizmoHandle';
 import { ORTHO_DEFS, isoMetresPerPixel, orthoPaneDeltaToWorld, orthoWorldToPane, type OrthoName } from './views';
+import { wheelPixels } from './wheel';
 
 const WHEEL_SENSITIVITY = 0.0015;
 const ORBIT_DEG_PER_PIXEL = 0.35;
@@ -42,10 +44,16 @@ export function usePaneGestures(
     /** Set while a sensor is being dragged in the TOP pane. */
     let draggingSensor: string | null = null;
 
-    /** Nearest visible sensor marker to a pane-local point, within the grab radius. */
+    /**
+     * Nearest visible sensor marker to a pane-local point, within the grab radius.
+     *
+     * Only answers in Move mode: a sensor must never shift under a stray drag while the user is
+     * reading the layout, so placing one is always a deliberate act.
+     */
     const sensorUnder = (px: number, py: number): string | null => {
       if (name !== 'TOP') return null;
       const state = useStore.getState();
+      if (state.dragMode !== 'translate') return null;
       const view = state.views.TOP;
       const rect = el.getBoundingClientRect();
 
@@ -105,7 +113,7 @@ export function usePaneGestures(
       e.preventDefault();
       const store = useStore.getState();
       const before = store.views[name];
-      const factor = Math.exp(-e.deltaY * WHEEL_SENSITIVITY);
+      const factor = Math.exp(-wheelPixels(e.deltaY, e.deltaMode) * WHEEL_SENSITIVITY);
       store.zoomBy(factor, name);
 
       if (name === 'ISO') return;
@@ -127,13 +135,17 @@ export function usePaneGestures(
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.button !== 0 && e.button !== 1) return;
+      // The gizmo shares this div. If a handle is under the pointer it owns the drag, not the orbit.
+      if (name === 'ISO' && e.button === 0 && gizmoHandleUnderPointer()) return;
       const rect = el.getBoundingClientRect();
       const hit =
         e.button === 0 ? sensorUnder(e.clientX - rect.left, e.clientY - rect.top) : null;
 
       dragging = true;
       draggingSensor = hit;
-      panning = hit === null && (name !== 'ISO' || e.shiftKey);
+      // The middle button always pans, in every pane — including ISO, where the left button
+      // orbits. It never grabs a sensor either, so it stays a safe way to shift the view.
+      panning = hit === null && (name !== 'ISO' || e.shiftKey || e.button === 1);
       lastX = e.clientX;
       lastY = e.clientY;
       if (hit) useStore.getState().select(hit);
@@ -211,7 +223,21 @@ export function usePaneGestures(
     const onDoubleClick = () => fitRef.current();
     const onContextMenu = (e: MouseEvent) => e.preventDefault();
 
+    /**
+     * Chrome opens its autoscroll widget on a middle press, which would hijack the pan. Only
+     * `mousedown` suppresses it — cancelling `pointerdown` does not, since for a mouse pointer
+     * the compatibility mouse event is dispatched regardless.
+     */
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
+    };
+    const onAuxClick = (e: MouseEvent) => {
+      if (e.button === 1) e.preventDefault();
+    };
+
     el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('mousedown', onMouseDown);
+    el.addEventListener('auxclick', onAuxClick);
     el.addEventListener('pointerdown', onPointerDown);
     el.addEventListener('pointermove', onPointerMove);
     el.addEventListener('pointerup', endDrag);
@@ -221,6 +247,8 @@ export function usePaneGestures(
 
     return () => {
       el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('mousedown', onMouseDown);
+      el.removeEventListener('auxclick', onAuxClick);
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', endDrag);

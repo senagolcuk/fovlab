@@ -7,6 +7,8 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Stage from './scene/Stage';
 import { useStore } from './store/useStore';
+import DeletePrompt from './ui/DeletePrompt';
+import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
 import ZoomControls from './ui/ZoomControls';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
@@ -73,6 +75,7 @@ export default function App() {
             slotProps={{ typography: { variant: 'body2' } }}
           />
           <ZoomControls variant="row" />
+          <FullscreenButton />
         </Toolbar>
       </AppBar>
 
@@ -87,6 +90,8 @@ export default function App() {
       ) : (
         <TooNarrow />
       )}
+
+      <DeletePrompt />
     </Box>
   );
 }

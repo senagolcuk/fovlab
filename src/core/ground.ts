@@ -6,6 +6,7 @@
  * eight edges with the plane. Nothing is sampled, ray-marched or projected.
  */
 
+import { footprintPolygon, isInsideFootprint } from './footprint';
 import { FRUSTUM_EDGES } from './frustum';
 import type { Frustum, GroundCoverage, Pose, Vec2, Vec3, Vehicle } from './types';
 
@@ -144,16 +145,9 @@ export function polygonExtents(poly: Vec2[]): { x: [number, number]; y: [number,
   return { x: [minX, maxX], y: [minY, maxY] };
 }
 
-/** The vehicle footprint rectangle `[-L/2, L/2] x [-W/2, W/2]`, counter-clockwise. */
+/** The vehicle footprint, counter-clockwise. Four points for a box, an arc per rounded corner. */
 export function footprintRect(vehicle: Vehicle): Vec2[] {
-  const hl = vehicle.length / 2;
-  const hw = vehicle.width / 2;
-  return [
-    [hl, hw],
-    [-hl, hw],
-    [-hl, -hw],
-    [hl, -hw],
-  ];
+  return footprintPolygon(vehicle);
 }
 
 /**
@@ -161,11 +155,9 @@ export function footprintRect(vehicle: Vehicle): Vec2[] {
  * Zero when they overlap at all.
  */
 export function blindGap(poly: Vec2[], vehicle: Vehicle): number {
-  const hl = vehicle.length / 2;
-  const hw = vehicle.width / 2;
-  const rect = footprintRect(vehicle);
+  const rect = footprintPolygon(vehicle);
 
-  for (const p of poly) if (pointInRect(p, hl, hw)) return 0;
+  for (const p of poly) if (isInsideFootprint(p, vehicle)) return 0;
   for (const r of rect) if (pointInPolygon(r, poly)) return 0;
 
   let best = Infinity;
@@ -179,11 +171,10 @@ export function blindGap(poly: Vec2[], vehicle: Vehicle): number {
   return best;
 }
 
-/** True when the sensor sits inside the vehicle box, which would occlude it. */
+/** True when the sensor sits inside the vehicle body, which would occlude it. */
 export function isInsideBody(pose: Pose, vehicle: Vehicle): boolean {
   return (
-    Math.abs(pose.x) <= vehicle.length / 2 &&
-    Math.abs(pose.y) <= vehicle.width / 2 &&
+    isInsideFootprint([pose.x, pose.y], vehicle) &&
     pose.z >= vehicle.clearance &&
     pose.z <= vehicle.clearance + vehicle.height
   );

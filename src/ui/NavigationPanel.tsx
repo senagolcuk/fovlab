@@ -1,15 +1,19 @@
 import Box from '@mui/material/Box';
 import { Panel, Readout } from './Panel';
 
+/** Where a key differs on macOS, both spellings are given, separated by a slash. */
 const KEYS: Array<[string, string]> = [
   ['Scroll', 'Zoom'],
-  ['Drag empty space', 'Pan'],
+  ['Middle-drag', 'Pan, in any pane'],
   ['Drag in ISO', 'Orbit'],
   ['Shift + drag in ISO', 'Pan'],
   ['Double-click a pane', 'Fit that pane'],
   ['+  /  −', 'Zoom in / out'],
   ['F', 'Fit all views'],
-  ['Alt while dragging', 'Suppress snap to body'],
+  ['Delete / Backspace', 'Removes the selected sensor, while a drag mode is on'],
+  ['Ctrl / Cmd + Z', 'Undo'],
+  ['Ctrl / Cmd + Y', 'Redo'],
+  ['Alt / Option while dragging', 'Ignore the 15 cm snap to the body'],
 ];
 
 export default function NavigationPanel() {

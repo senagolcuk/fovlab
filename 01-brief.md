@@ -24,7 +24,7 @@ shown.
 - **@react-three/fiber** + **@react-three/drei** for 3D. `<View>` gives the four viewports,
   `<TransformControls>` gives the drag gizmo.
 - **Zustand** for state.
-- **MUI v6** for controls, Material 3 light theme, violet primary `#6750A4`.
+- **MUI v6** for controls, light theme, blue primary `#1E79D3`. Full palette in `04-ui.md`.
 - **Vitest** for the core maths tests.
 
 No server. Everything runs client-side. State persists to `localStorage`.
@@ -46,6 +46,7 @@ site-specific code so the tool can be split out later without a rewrite.
 - Exact ground coverage polygon per sensor, with area, extents and blind gap readout
 - Blind spot report: azimuth sectors around the vehicle with no coverage within 5 m
 - JSON export and import, autosave to localStorage
+- Undo and redo over the layout, with a drag counting as one step
 
 ## Out of scope for v1
 
@@ -56,7 +57,8 @@ Deliberately deferred. Do not build these.
 - Deriving FOV from focal length and sensor size — **the user always enters FOV directly**
 - Accounts, sharing, server-side storage
 - Mobile layout — desktop only, minimum 1280px wide
-- Undo/redo (nice to have; only if time remains)
+*Undo/redo was on this list and has since been built, at the user's request on 2026-08-11. It
+covers the vehicle and the sensors; cameras and display options stay outside it.*
 
 ## Timeline
 

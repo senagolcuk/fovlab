@@ -37,6 +37,7 @@ export default function CoverageReport() {
   return (
     <Panel
       title="Coverage"
+      defaultExpanded={false}
       action={stale ? <CircularProgress size={12} thickness={6} /> : undefined}
     >
       {sensorCount === 0 ? (
@@ -81,19 +82,26 @@ export default function CoverageReport() {
             </Box>
           )}
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                size="small"
-                checked={display.blindSectors}
-                onChange={(e) => setDisplay({ blindSectors: e.target.checked })}
-              />
-            }
-            label="Shade the gaps in TOP"
-            slotProps={{ typography: { variant: 'body2' } }}
-          />
         </Box>
       )}
+
+      {/*
+        Outside the branches above. This used to live beside the gap list, so it disappeared in
+        the one state where the shading is most puzzling — an empty layout, where every sector is
+        blind and there was no way on screen to turn the red off.
+      */}
+      <FormControlLabel
+        control={
+          <Checkbox
+            size="small"
+            checked={display.blindSectors}
+            onChange={(e) => setDisplay({ blindSectors: e.target.checked })}
+          />
+        }
+        label="Shade the gaps in TOP"
+        slotProps={{ typography: { variant: 'body2' } }}
+        sx={{ mt: 1 }}
+      />
     </Panel>
   );
 }
