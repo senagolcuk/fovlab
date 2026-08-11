@@ -5,9 +5,15 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Typography from '@mui/material/Typography';
-import { MONO } from '../theme';
+import { CARD_SHADOW, HEADER_TINT, MONO } from '../theme';
 
-/** A collapsible sidebar section. */
+/**
+ * A collapsible sidebar section, drawn as its own card.
+ *
+ * The sections used to run together as one column split by hairlines, which left it hard to see
+ * where one ended and the next began. Each is now a bordered card on the off-white sidebar, with
+ * a tinted header, so the boundary is a shape rather than a line.
+ */
 export function Panel({
   title,
   children,
@@ -25,24 +31,42 @@ export function Panel({
       disableGutters
       square
       sx={{
-        bgcolor: 'transparent',
-        '&:before': { display: 'none' },
-        borderBottom: 1,
+        bgcolor: 'background.paper',
+        border: 1,
         borderColor: 'divider',
+        borderRadius: 2,
+        // The header tint would otherwise square off the rounded corners.
+        overflow: 'hidden',
+        boxShadow: CARD_SHADOW,
+        mb: 1.5,
+        '&:before': { display: 'none' },
       }}
     >
-      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 48 }}>
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon sx={{ color: 'secondary.main' }} />}
+        sx={{
+          minHeight: 44,
+          bgcolor: HEADER_TINT,
+          '&.Mui-expanded': { minHeight: 44, borderBottom: 1, borderColor: 'divider' },
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', pr: 1 }}>
           <Typography
             variant="subtitle2"
-            sx={{ textTransform: 'uppercase', color: 'text.secondary', flexGrow: 1 }}
+            sx={{
+              textTransform: 'uppercase',
+              color: 'secondary.main',
+              fontWeight: 700,
+              letterSpacing: 0.8,
+              flexGrow: 1,
+            }}
           >
             {title}
           </Typography>
           {action}
         </Box>
       </AccordionSummary>
-      <AccordionDetails sx={{ pt: 0, pb: 2 }}>{children}</AccordionDetails>
+      <AccordionDetails sx={{ pt: 2, pb: 2 }}>{children}</AccordionDetails>
     </Accordion>
   );
 }

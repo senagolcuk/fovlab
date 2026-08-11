@@ -17,14 +17,18 @@ export default function Sidebar() {
         height: '100%',
         overflowY: 'auto',
         overflowX: 'hidden',
-        bgcolor: 'background.paper',
+        // Off-white behind the cards, so each panel reads as a raised surface.
+        bgcolor: 'background.default',
         borderRight: 1,
         borderColor: 'divider',
+        px: 1.5,
+        pt: 1.5,
+        pb: 3,
       }}
     >
       <VehiclePanel />
-      <SensorList />
       <DisplayPanel />
+      <SensorList />
       <CoverageReport />
       <NavigationPanel />
     </Box>

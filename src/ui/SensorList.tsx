@@ -4,8 +4,14 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import DownloadIcon from '@mui/icons-material/Download';
 import IconButton from '@mui/material/IconButton';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Snackbar from '@mui/material/Snackbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -98,11 +104,19 @@ export default function SensorList() {
   const addSensor = useStore((s) => s.addSensor);
   const duplicateSensor = useStore((s) => s.duplicateSensor);
   const importLayout = useStore((s) => s.importLayout);
+  const clearSensors = useStore((s) => s.clearSensors);
   const requestFit = useStore((s) => s.requestFit);
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const list = ids ? ids.split(',') : [];
+
+  const reset = () => {
+    clearSensors();
+    requestFit();
+    setConfirmReset(false);
+  };
 
   const onImport = async (file: File | undefined) => {
     if (!file) return;
@@ -115,7 +129,7 @@ export default function SensorList() {
   };
 
   return (
-    <Panel title="Sensors">
+    <Panel title="Sensors" defaultExpanded={false}>
       <Box sx={{ mx: -2 }}>
         {list.length === 0 ? (
           <Typography variant="body2" sx={{ color: 'text.secondary', px: 2, py: 1 }}>
@@ -148,6 +162,15 @@ export default function SensorList() {
         <Button size="small" startIcon={<UploadIcon />} onClick={() => fileRef.current?.click()}>
           Import
         </Button>
+        <Button
+          size="small"
+          color="error"
+          startIcon={<RestartAltIcon />}
+          // Nothing to lose when the list is already empty, so skip straight to the refit.
+          onClick={() => (list.length === 0 ? reset() : setConfirmReset(true))}
+        >
+          Reset
+        </Button>
         <input
           ref={fileRef}
           type="file"
@@ -159,6 +182,21 @@ export default function SensorList() {
           }}
         />
       </Box>
+
+      <Dialog open={confirmReset} onClose={() => setConfirmReset(false)}>
+        <DialogTitle>Remove all sensors?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {`This deletes ${list.length} sensor${list.length === 1 ? '' : 's'} and refits the four views. The vehicle dimensions stay as they are.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmReset(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={reset}>
+            Remove all
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={Boolean(error)}

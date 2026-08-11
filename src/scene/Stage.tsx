@@ -15,14 +15,15 @@ import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
 import type { Rect } from '../core/types';
 import { useStore, type ViewsState } from '../store/useStore';
 import { IsoCamera, OrthoCamera } from './Cameras';
+import DimensionOverlay from './DimensionOverlay';
 import Gizmo from './Gizmo';
 import SceneContent from './SceneContent';
-import { useCanvasPointerGate } from './useCanvasPointerGate';
 import { usePaneGestures } from './usePaneGestures';
 import { AXIS_HINTS, ORTHO_DEFS, fitIso, fitOrtho, sceneBounds, type OrthoName } from './views';
 import { MONO } from '../theme';
 
-const BACKGROUND = '#F7F5FA';
+/** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
+const BACKGROUND = '#F8FAFB';
 
 /**
  * drei's `<View>` renders with `autoClear` off and r3f's own render pass is disabled once a
@@ -98,6 +99,10 @@ function Pane({
         width: rect.width,
         height: rect.height,
         touchAction: 'none',
+        // Firefox and Safari start a text selection on a drag that begins here otherwise.
+        // Safari only took the unprefixed property in 17, so both spellings stay.
+        WebkitUserSelect: 'none',
+        userSelect: 'none',
       }}
     >
       {name === 'ISO' ? <IsoCamera /> : <OrthoCamera name={name as OrthoName} />}
@@ -161,8 +166,6 @@ export default function Stage() {
 
   const onFitPane = useCallback((name: ViewName) => fitPanes(name), [fitPanes]);
 
-  useCanvasPointerGate(hostRef, rects.ISO);
-
   return (
     <Box
       ref={hostRef}
@@ -175,6 +178,9 @@ export default function Stage() {
 
       <Canvas
         eventSource={hostRef as never}
+        // Must stay `none`. The canvas covers all four panes, and drei's `<View>` points the
+        // event layer at the pane divs underneath — including the one `TransformControls`
+        // listens on. Give the canvas the pointer and the gizmo stops receiving events.
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
         gl={{ antialias: true, alpha: false }}
         onCreated={({ gl }) => gl.setClearColor(BACKGROUND)}
@@ -213,6 +219,12 @@ export default function Stage() {
           />
         </>
       )}
+
+      {/* Above the canvas for the same reason the separators are: the canvas is opaque. */}
+      {size.width > 0 &&
+        (['TOP', 'FRONT', 'LEFT'] as OrthoName[]).map((name) => (
+          <DimensionOverlay key={name} name={name} rect={rects[name]} />
+        ))}
 
       {size.width > 0 &&
         VIEW_NAMES.map((name) => <PaneLabel key={name} name={name} rect={rects[name]} />)}

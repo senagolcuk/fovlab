@@ -15,15 +15,20 @@ export default function SceneContent({ blindSectors = false }: { blindSectors?: 
 
   return (
     <>
-      <GroundGrid visible={display.grid} />
-      {report && (
+      <GroundGrid visible={display.grid} size={display.gridSize} />
+      {/*
+        With nothing mounted every sector is blind, which is true but useless: it shades the whole
+        ring red on the opening screen and reads as an error rather than a finding. The report is
+        only worth drawing once there is coverage to have a gap in.
+      */}
+      {report && sensors.some((s) => s.visible) && (
         <BlindSectors
           blind={report.blind}
           vehicle={vehicle}
           visible={blindSectors && display.blindSectors}
         />
       )}
-      <VehicleBody vehicle={vehicle} wheels={display.wheels} />
+      {display.vehicle && <VehicleBody vehicle={vehicle} wheels={display.wheels} />}
       {sensors.map((sensor) => (
         <SensorFov
           key={sensor.id}

@@ -73,6 +73,41 @@ describe('sensor lifecycle', () => {
     expect(useStore.getState().selectedId).toBeNull();
   });
 
+  it('locks dragging again for each new sensor, whatever the last one was left in', () => {
+    useStore.getState().setDragMode('translate');
+    useStore.getState().addSensor();
+    expect(useStore.getState().dragMode).toBe('off');
+
+    useStore.getState().setDragMode('rotate');
+    const a = useStore.getState().sensors[0].id;
+    useStore.getState().duplicateSensor(a);
+    expect(useStore.getState().dragMode).toBe('off');
+  });
+
+  it('does not leave a stale gizmo drag behind when a sensor is added mid-drag', () => {
+    useStore.getState().setDragMode('translate');
+    useStore.getState().setGizmoDragging(true);
+    useStore.getState().addSensor();
+    expect(useStore.getState().gizmoDragging).toBe(false);
+  });
+
+  it('drops every sensor on clearSensors, keeping the vehicle', () => {
+    useStore.getState().setVehicle({ length: 6.2 });
+    useStore.getState().addSensor();
+    useStore.getState().addSensor();
+    useStore.getState().clearSensors();
+    expect(useStore.getState().sensors).toEqual([]);
+    expect(useStore.getState().selectedId).toBeNull();
+    expect(useStore.getState().vehicle.length).toBe(6.2);
+  });
+
+  it('is a no-op on an already empty layout', () => {
+    useStore.getState().clearSensors();
+    useStore.getState().clearSensors();
+    expect(useStore.getState().sensors).toEqual([]);
+    expect(useStore.getState().selectedId).toBeNull();
+  });
+
   it('touches only the named sensor on updatePose', () => {
     const a = useStore.getState().addSensor();
     useStore.getState().addSensor();

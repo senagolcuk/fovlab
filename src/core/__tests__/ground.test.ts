@@ -18,6 +18,8 @@ const vehicle: Vehicle = {
   clearance: 0.2,
   wheelbase: 2.8,
   wheelRadius: 0.34,
+  shape: 'box',
+  cornerRadius: 0,
 };
 
 function pose(p: Partial<Pose>): Pose {

@@ -10,6 +10,8 @@ const vehicle: Vehicle = {
   clearance: 0.2,
   wheelbase: 2.8,
   wheelRadius: 0.34,
+  shape: 'box',
+  cornerRadius: 0,
 };
 // box: x ±2.4, y ±0.95, z 0.2 … 1.7
 

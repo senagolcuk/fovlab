@@ -70,6 +70,8 @@ export interface Vehicle {
   clearance: number;   // ground to underside of the box, m
   wheelbase: number;   // m
   wheelRadius: number; // m
+  shape: 'box' | 'rounded' | 'cylinder';
+  cornerRadius: number; // plan-view corner radius, m; read only when shape is 'rounded'
 }
 
 export type SensorKind = 'camera' | 'lidar' | 'radar';

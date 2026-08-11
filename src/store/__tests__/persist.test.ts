@@ -81,7 +81,7 @@ describe('sanitizeLayout', () => {
       sensors: [validSensor, null, 42, { ...validSensor, color: 'purple' }],
     })!;
     expect(l.sensors).toHaveLength(2);
-    expect(l.sensors[1].color).toBe('#6750A4'); // fell back from an invalid hex
+    expect(l.sensors[1].color).toBe('#E8827C'); // fell back from an invalid hex
   });
 });
 

@@ -92,21 +92,41 @@ their predecessor, and return the polygon if at least 3 points remain, otherwise
 
 - **Area** — shoelace formula on the polygon.
 - **X and Y extents** — min and max of the polygon coordinates.
-- **Blind gap** — the shortest distance from the vehicle footprint rectangle
-  `[−L/2, L/2] × [−W/2, W/2]` to the nearest point of the coverage polygon.
+- **Blind gap** — the shortest distance from the vehicle footprint to the nearest point of the
+  coverage polygon.
 
-Compute the blind gap in closed form, not by sampling. For every polygon edge and every rectangle
-edge, take the minimum segment-to-segment distance; if the polygon overlaps the rectangle at all,
+Compute the blind gap in closed form, not by sampling. For every polygon edge and every footprint
+edge, take the minimum segment-to-segment distance; if the polygon overlaps the footprint at all,
 the gap is 0. A correct helper is `pointToSegmentDistance` plus a segment intersection test.
 
 > The previous prototype sampled each polygon edge at `t += 0.02`. That is wrong at large
 > footprints and must not be carried over.
 
+### Body shape
+
+The footprint is `[−L/2, L/2] × [−W/2, W/2]` shrunk on each side by a corner radius `r` and swept
+back out by a disc of radius `r` — `core/footprint.ts`. One family covers all three settings:
+`box` is `r = 0`, `rounded` is the user's figure clamped to `min(L, W) / 2`, and `cylinder` is that
+maximum, giving a circle when `L = W` and a stadium when they differ.
+
+Being a Minkowski sum keeps every query closed form, and each collapses to the old rectangle
+arithmetic exactly at `r = 0`:
+
+- **inside test** — `length(max(|p| − inner, 0)) + min(max(qx, qy), 0) − r ≤ 0`. The second term is
+  what makes the interior correct rather than flat zero.
+- **exit radius** for the sector report — the flat sides give it directly; a ray leaving through a
+  corner arc solves `|t·(a,b) − inner| = r`, a quadratic in `t`.
+- **snap** — nearest point of the inner box, then a step of `r` outwards in plan. Only the vertical
+  edges are rounded, so the roof and the underside stay flat.
+
+Every measurement follows the shape, so the drawing and the numbers cannot disagree: rounding a
+corner really removes that corner from the footprint, the blind gap and the body warning.
+
 ### Body warning
 
-If the sensor position falls inside the vehicle box —
-`|x| ≤ L/2 && |y| ≤ W/2 && clearance ≤ z ≤ clearance + H` — show a warning that the body will
-occlude it. v1 does not model the occlusion itself.
+If the sensor position falls inside the body — inside the footprint, and
+`clearance ≤ z ≤ clearance + H` — show a warning that the body will occlude it. v1 does not model
+the occlusion itself.
 
 ## Blind spot report
 

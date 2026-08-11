@@ -84,6 +84,12 @@ export default function NumberField({
         focused.current = true;
         e.target.select();
       }}
+      // A focused number input treats the wheel as a spinner in every browser, so scrolling the
+      // sidebar past one silently edits it. Dropping focus first lets the scroll through and
+      // leaves the value alone — the default action reads the focus state after this handler.
+      onWheel={(e) => {
+        if (focused.current) (e.target as HTMLElement).blur();
+      }}
       onBlur={() => {
         focused.current = false;
         commit(text);

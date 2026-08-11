@@ -66,10 +66,15 @@ export default function BlindSectors({
 
   return (
     <mesh geometry={geometry} renderOrder={0}>
+      {/*
+        Light grey rather than red. A gap is a finding, not a fault, and the red read as an error
+        the moment more than a sector or two was uncovered. The opacity is well above what the red
+        needed: grey at 0.16 over the near-white ground is invisible. This lands around #E0E0E0.
+      */}
       <meshBasicMaterial
-        color="#B3261E"
+        color="#BFBFBF"
         transparent
-        opacity={0.16}
+        opacity={0.42}
         depthWrite={false}
         side={THREE.DoubleSide}
       />

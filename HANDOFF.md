@@ -61,12 +61,25 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
 3. **`resize={{ scroll: false, debounce: 0 }}` on the `<Canvas>`.** Views scissor against the canvas
    rect, so a stale measurement offsets every pane.
 
-4. **`scene/useCanvasPointerGate.ts`.** The panes are DOM divs beneath a `pointer-events: none`
-   canvas — that is what lets each pane own its own pan, zoom and orbit without fighting the 3D
-   event system. But `TransformControls` listens on the canvas, so it would never see a pointer.
-   The gate hands the canvas the pointer only while the cursor is inside the ISO pane and within
-   `GIZMO_REACH` (130 px) of the selected sensor, plus for the duration of a gizmo drag. If the
-   gizmo feels hard to grab, tune `GIZMO_REACH` — do not remove the gate.
+4. **The canvas keeps `pointer-events: none` at all times.** The panes are DOM divs beneath it,
+   which is what lets each pane own its own pan, zoom and orbit without fighting the 3D event
+   system.
+
+   *This entry used to describe `scene/useCanvasPointerGate.ts`, which handed the canvas the
+   pointer within `GIZMO_REACH` (130 px) of the selected sensor. It was removed on 2026-08-11
+   because its premise was false and it made the gizmo unusable.* The premise was that
+   `TransformControls` listens on the canvas. It does not: drei's `<View>` calls
+   `setEvents({ connected: track.current })`, so `events.connected` — and therefore the
+   controls' `domElement` — is the **ISO pane div**. Measured in the browser: the div at
+   `980,431 620x382`, exactly the ISO rect. So the gizmo was already receiving pointers, and the
+   gate's handover instead put the opaque canvas on top of the pane div. `elementFromPoint` over
+   the gizmo returned `CANVAS` with the gate open and the pane `DIV` with it closed — the gate
+   fired precisely when the cursor came near the sensor, which is precisely when it broke the
+   thing it was meant to enable.
+
+   `TransformControls` and the pane's orbit now share that div. `scene/gizmoHandle.ts` arbitrates:
+   the controls set `axis` during their hover pass on the preceding pointermove, so reading it on
+   pointerdown decides the winner without depending on listener registration order.
 
 5. **The catalogue stores FOV values wider than `FOV_MAX` (179.4°) unclamped.** `parseCatalog` keeps
    what the datasheet says; `clampSpec` limits what the pyramid can draw. The editor shows the real
@@ -153,7 +166,11 @@ measurement.
 ### Deliberately out of scope for v1
 
 Do not build these: overlap analysis between sensors, body occlusion of the FOV, deriving FOV from
-focal length and sensor size, accounts or server storage, a mobile layout, undo/redo.
+focal length and sensor size, accounts or server storage, a mobile layout.
+
+Undo/redo **was** on this list and has since been built, at the user's request on 2026-08-11. It
+snapshots the vehicle and the sensors only, and coalesces a drag into a single step — see the
+history section at the foot of `store/useStore.ts`.
 
 ---
 
@@ -165,7 +182,9 @@ Desktop only, minimum 1280 px wide. The app opens empty — click `Add sensor`, 
 **Viewports**
 
 1. Drag empty space in any pane. The world should stay glued to the cursor at any zoom, in every
-   pane, with no drift.
+   pane, with no drift. Middle-drag pans too, in every pane — in ISO it pans rather than orbits,
+   and over a sensor marker it pans rather than grabbing. Chrome's autoscroll widget must never
+   appear.
 2. Scroll to zoom. In the orthographic panes the point under the cursor should stay put.
 3. `Link zoom` on: scrolling in one pane scales all four by the same factor. Off: only that pane.
    Panning is always per-pane, in both modes.
@@ -179,7 +198,9 @@ Desktop only, minimum 1280 px wide. The app opens empty — click `Add sensor`, 
 **Geometry checkpoint** (from `05-build-plan.md`, worth repeating by eye)
 
 7. Place a sensor at `z = 2`, `pitch = -90`, `90° × 90°`. The ground square in TOP must measure
-   exactly 4 m × 4 m against the 1 m grid. If it does not, stop and fix the maths before anything
+   exactly 4 m × 4 m against the 1 m grid — leave `Grid > Cell size` at its 1 m default for this
+   check, or the squares you are counting are not metres. If it does not, stop and fix the maths
+   before anything
    else.
 
 **Editing**
@@ -198,15 +219,20 @@ Desktop only, minimum 1280 px wide. The app opens empty — click `Add sensor`, 
 
 **Dragging**
 
-14. In TOP, hover a sensor marker — the cursor becomes a grab hand. Drag it; the X and Y fields must
-    track live.
+`Drag` gates every drag, in every pane. With it `Off` a sensor cannot be moved at all: dragging its
+marker pans the view instead. This is deliberate — placing a sensor is always a deliberate act, so
+nothing shifts under a stray drag while the layout is being read.
+
+14. With `Drag` set to `Off`, press on a sensor marker in TOP and drag. The pane must pan and the
+    sensor must not move. Set `Drag` to `Move`: now the cursor becomes a grab hand over the marker
+    and the X and Y fields track the drag live.
 15. Drag a sensor to within 15 cm of the vehicle body. It should stick to the surface and swing its
     optical axis to point out of that face. Hold `Alt` while dragging — no snap.
-16. Select a sensor, set `Drag in ISO` to `Move`. The gizmo appears at the marker. Dragging an axis
-    writes to the position fields live, and the camera must not orbit at the same time. Away from
-    the gizmo, orbit still works.
-17. Switch to `Rotate`. Dragging a ring writes to yaw, pitch and roll. Rotate to point straight down
-    and confirm the numbers stay sane.
+16. Select a sensor, set `Drag` to `Move`. The gizmo appears at the marker in the ISO pane.
+    Dragging an axis writes to the position fields live, and the camera must not orbit at the same
+    time. Away from the gizmo, orbit still works.
+17. Switch to `Rotate`. Dragging a ring writes to yaw, pitch and roll. TOP dragging is off in this
+    mode. Rotate to point straight down and confirm the numbers stay sane.
 
 **Report and persistence**
 

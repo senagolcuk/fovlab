@@ -5,6 +5,7 @@
  * a handful of radii, starting where the ray leaves the vehicle footprint.
  */
 
+import { footprintExitRadius } from './footprint';
 import { pointInPolygon } from './ground';
 import { DEG } from './rotation';
 import type { BlindSector, Vec2, Vehicle } from './types';
@@ -31,15 +32,8 @@ export interface BlindSpotReport {
   blindFraction: number;
 }
 
-/** Radius at which a ray from the origin leaves the footprint rectangle. */
-export function footprintExitRadius(cos: number, sin: number, vehicle: Vehicle): number {
-  const hl = vehicle.length / 2;
-  const hw = vehicle.width / 2;
-  const tx = Math.abs(cos) < 1e-12 ? Infinity : hl / Math.abs(cos);
-  const ty = Math.abs(sin) < 1e-12 ? Infinity : hw / Math.abs(sin);
-  const t = Math.min(tx, ty);
-  return Number.isFinite(t) ? t : 0;
-}
+/** Radius at which a ray from the origin leaves the footprint. Re-exported for the suite. */
+export { footprintExitRadius };
 
 export function blindSpotReport(
   polygons: Vec2[][],
