@@ -9,6 +9,7 @@ src/
     rotation.ts    rotation matrix, vector maths
     frustum.ts     FOV pyramid corners
     ground.ts      exact ground polygon, area, extents, blind gap
+    footprint.ts   the body outline: box, rounded and cylinder as one family
     coverage.ts    blind spot sector report
     catalog.ts     spec lookup and resolution
     __tests__/     Vitest suites — the acceptance tests live here
@@ -74,7 +75,9 @@ export interface Vehicle {
   cornerRadius: number; // plan-view corner radius, m; read only when shape is 'rounded'
 }
 
-export type SensorKind = 'camera' | 'lidar' | 'radar';
+// Free text. `camera`, `lidar` and `radar` are offered as suggestions, but ultrasonic and
+// thermal are real sensors and nothing geometric reads this field — it only ever labels.
+export type SensorKind = string;
 
 /** What a sensor IS. Independent of where it is mounted. */
 export interface SensorSpec {
@@ -111,6 +114,8 @@ export interface Layout {
   version: 1;
   vehicle: Vehicle;
   sensors: SensorInstance[];
+  /** User-defined models these sensors refer to. Built-in entries are not repeated here. */
+  models?: SensorSpec[];
 }
 ```
 
@@ -174,4 +179,14 @@ blind spot report on every frame — debounce it to ~150 ms.
 ## JSON format
 
 Export and import use the `Layout` shape verbatim, with `version: 1`. On import, validate the
-version, clamp values to legal ranges, regenerate all `id` fields, and drop unknown keys.
+version, clamp values to legal ranges, regenerate all sensor `id` fields, and drop unknown keys.
+
+A layout also carries the **user-defined models its sensors use**. `effectiveSpec` falls back to
+`DEFAULT_FOV` for an unknown spec id, silently, so without them a file would draw different
+geometry wherever the library differs. Model ids are *not* regenerated — they are how an instance
+finds its spec. On import the local copy of a model wins, so re-opening an old export cannot revert
+a figure since corrected.
+
+Three keys, per browser, none of them in the repo: `sensor-fov.layout.v1` (autosaved layout),
+`sensor-fov.models.v1` (the model library, deliberately outside the layout so Reset, Import and undo
+leave it alone) and `sensor-fov.prefs.v1`.
