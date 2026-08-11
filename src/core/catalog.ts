@@ -42,11 +42,61 @@ export function describeFov(spec: FovSpec): string {
   return `${n(spec.hfov)}°×${n(spec.vfov)}° ${n(spec.range)}m`;
 }
 
-const KINDS: SensorKind[] = ['camera', 'lidar', 'radar'];
+/** Offered in the kind picker. Not a limit — the field takes any word. */
+export const SUGGESTED_KINDS: SensorKind[] = ['camera', 'lidar', 'radar'];
+
+/** Longest kind, manufacturer or model string kept. Enough for any real name. */
+const NAME_MAX = 64;
 
 /** A field of view a datasheet could plausibly state. Wider than FOV_MAX is allowed here. */
 function isSaneAngle(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 360;
+}
+
+function name(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const trimmed = v.trim();
+  return trimmed === '' ? null : trimmed.slice(0, NAME_MAX);
+}
+
+/**
+ * One entry, validated. Returns null rather than a half-built spec, so a malformed row is
+ * dropped instead of quietly becoming a sensor with the wrong numbers.
+ */
+export function parseSpec(entry: unknown): SensorSpec | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const e = entry as Record<string, unknown>;
+
+  const id = name(e.id);
+  const kind = name(e.kind);
+  const manufacturer = name(e.manufacturer);
+  const model = name(e.model);
+  if (!id || !kind || manufacturer === null || !model) return null;
+  if (typeof e.range !== 'number' || !Number.isFinite(e.range)) return null;
+
+  // The catalogue records what the datasheet says, not what the renderer can draw. A lens
+  // wider than FOV_MAX is kept at its real figure and clamped at render time by clampSpec,
+  // so the editor can show the engineer the number they looked up.
+  if (!isSaneAngle(e.hfov) || !isSaneAngle(e.vfov)) return null;
+
+  const spec: SensorSpec = {
+    id,
+    kind,
+    manufacturer,
+    model,
+    hfov: e.hfov,
+    vfov: e.vfov,
+    range: clampRange(e.range),
+    verified: e.verified === true,
+  };
+  const res = e.resolution as { h?: unknown; v?: unknown } | undefined;
+  if (res && typeof res.h === 'number' && typeof res.v === 'number') {
+    spec.resolution = { h: res.h, v: res.v };
+  }
+  if (typeof e.datasheetUrl === 'string' && e.datasheetUrl !== '') {
+    spec.datasheetUrl = e.datasheetUrl;
+  }
+  return spec;
 }
 
 /** Drops malformed entries rather than trusting the JSON file. */
@@ -58,38 +108,9 @@ export function parseCatalog(raw: unknown): SensorSpec[] {
   const seen = new Set<string>();
 
   for (const entry of specs) {
-    if (!entry || typeof entry !== 'object') continue;
-    const e = entry as Record<string, unknown>;
-    if (typeof e.id !== 'string' || e.id === '' || seen.has(e.id)) continue;
-    if (typeof e.manufacturer !== 'string' || typeof e.model !== 'string') continue;
-    if (!KINDS.includes(e.kind as SensorKind)) continue;
-    if (typeof e.hfov !== 'number' || typeof e.vfov !== 'number' || typeof e.range !== 'number') {
-      continue;
-    }
-
-    // The catalogue records what the datasheet says, not what the renderer can draw. A lens
-    // wider than FOV_MAX is kept at its real figure and clamped at render time by clampSpec,
-    // so the editor can show the engineer the number they looked up.
-    if (!isSaneAngle(e.hfov) || !isSaneAngle(e.vfov)) continue;
-
-    seen.add(e.id);
-    const spec: SensorSpec = {
-      id: e.id,
-      kind: e.kind as SensorKind,
-      manufacturer: e.manufacturer,
-      model: e.model,
-      hfov: e.hfov,
-      vfov: e.vfov,
-      range: clampRange(e.range),
-      verified: e.verified === true,
-    };
-    const res = e.resolution as { h?: unknown; v?: unknown } | undefined;
-    if (res && typeof res.h === 'number' && typeof res.v === 'number') {
-      spec.resolution = { h: res.h, v: res.v };
-    }
-    if (typeof e.datasheetUrl === 'string' && e.datasheetUrl !== '') {
-      spec.datasheetUrl = e.datasheetUrl;
-    }
+    const spec = parseSpec(entry);
+    if (!spec || seen.has(spec.id)) continue;
+    seen.add(spec.id);
     out.push(spec);
   }
 

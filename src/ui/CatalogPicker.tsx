@@ -6,6 +6,8 @@
  * freezes the current numbers into the instance.
  */
 
+import { useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -18,13 +20,19 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { effectiveSpec, findSpec } from '../core/catalog';
 import type { SensorInstance, SensorSpec } from '../core/types';
 import { useStore } from '../store/useStore';
+import AddModelDialog from './AddModelDialog';
 
 export default function CatalogPicker({ sensor }: { sensor: SensorInstance }) {
   const catalog = useStore((s) => s.catalog);
+  const userModels = useStore((s) => s.userModels);
   const updateSensor = useStore((s) => s.updateSensor);
+  const removeModel = useStore((s) => s.removeModel);
+  const [adding, setAdding] = useState(false);
 
   const spec = findSpec(sensor.specId, catalog) ?? null;
   const overridden = Object.keys(sensor.override ?? {}).length > 0;
+  /** Built-ins cannot be deleted — they ship with the app. */
+  const isUserModel = spec !== null && userModels.some((m) => m.id === spec.id);
 
   const choose = (next: SensorSpec | null) => {
     if (!next) {
@@ -69,6 +77,24 @@ export default function CatalogPicker({ sensor }: { sensor: SensorInstance }) {
         }}
         size="small"
         fullWidth
+      />
+
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Button size="small" startIcon={<AddIcon />} onClick={() => setAdding(true)}>
+          Add model
+        </Button>
+        {isUserModel && (
+          <Button size="small" color="error" onClick={() => removeModel(spec.id)}>
+            Delete model
+          </Button>
+        )}
+      </Box>
+
+      <AddModelDialog
+        open={adding}
+        onClose={() => setAdding(false)}
+        // Point this sensor at the type that was just defined.
+        onCreated={(id) => updateSensor(sensor.id, { specId: id, custom: undefined, override: undefined })}
       />
 
       {spec && (

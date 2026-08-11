@@ -37,7 +37,12 @@ export interface Vehicle {
   cornerRadius: number;
 }
 
-export type SensorKind = 'camera' | 'lidar' | 'radar';
+/**
+ * What the sensor is. Free text rather than a closed set: camera, lidar and radar cover most
+ * layouts, but ultrasonic and thermal are real sensors too, and nothing geometric reads this —
+ * it only ever labels. `SUGGESTED_KINDS` in `catalog.ts` offers the common three.
+ */
+export type SensorKind = string;
 
 /** What a sensor IS. Independent of where it is mounted. */
 export interface SensorSpec {
@@ -81,6 +86,14 @@ export interface Layout {
   version: 1;
   vehicle: Vehicle;
   sensors: SensorInstance[];
+  /**
+   * User-created models the sensors above refer to.
+   *
+   * Built-in catalogue entries ship with the app and are not repeated here. Models a person made
+   * themselves exist only in their browser, so without them in the file an exported layout would
+   * open elsewhere with every such sensor silently falling back to 90°×60° 10 m.
+   */
+  models?: SensorSpec[];
 }
 
 /** Apex plus the four far corners of the FOV pyramid, in world coordinates. */

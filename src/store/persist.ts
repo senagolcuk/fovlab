@@ -5,9 +5,18 @@
  * regenerate every id and drop unknown keys. Nothing from a file is trusted verbatim.
  */
 
+import { parseCatalog } from '../core/catalog';
 import { clampFov, clampRange } from '../core/frustum';
 import { clamp } from '../core/rotation';
-import type { FovSpec, Layout, Pose, SensorInstance, Vehicle, VehicleShape } from '../core/types';
+import type {
+  FovSpec,
+  Layout,
+  Pose,
+  SensorInstance,
+  SensorSpec,
+  Vehicle,
+  VehicleShape,
+} from '../core/types';
 
 const SHAPES: VehicleShape[] = ['box', 'rounded', 'cylinder'];
 
@@ -151,7 +160,7 @@ export function sanitizeLayout(raw: unknown): Layout | null {
   if (l.version !== 1) return null;
   if (!Array.isArray(l.sensors)) return null;
 
-  return {
+  const layout: Layout = {
     version: 1,
     vehicle: sanitizeVehicle(l.vehicle),
     sensors: l.sensors
@@ -159,6 +168,13 @@ export function sanitizeLayout(raw: unknown): Layout | null {
       .map((s, i) => sanitizeSensor(s, i))
       .filter((s): s is SensorInstance => s !== null),
   };
+
+  // Absent in files written before models existed, and in files that only use built-in entries.
+  if (Array.isArray(l.models)) {
+    const models = parseCatalog({ specs: l.models.slice(0, 200) });
+    if (models.length > 0) layout.models = models;
+  }
+  return layout;
 }
 
 /* --------------------------------------------------------------------------- storage */
@@ -196,6 +212,31 @@ export function clearLayout(): void {
  * to the drawing, and exporting a layout must not carry one engineer's "don't ask again" to
  * everyone who opens the file.
  */
+/**
+ * Models a person made themselves, kept apart from the layout: they are a library that outlives
+ * any one drawing. Referenced ones are also written into an exported layout, so a file opened on
+ * another machine draws the same geometry rather than falling back to the default FOV.
+ */
+const MODELS_KEY = 'sensor-fov.models.v1';
+
+export function loadModels(): SensorSpec[] {
+  try {
+    const text = localStorage.getItem(MODELS_KEY);
+    if (!text) return [];
+    return parseCatalog({ specs: JSON.parse(text) });
+  } catch {
+    return [];
+  }
+}
+
+export function saveModels(models: SensorSpec[]): void {
+  try {
+    localStorage.setItem(MODELS_KEY, JSON.stringify(models));
+  } catch {
+    // Quota or a private-mode block. The models last the session rather than breaking the app.
+  }
+}
+
 const PREFS_KEY = 'sensor-fov.prefs.v1';
 
 export interface Prefs {

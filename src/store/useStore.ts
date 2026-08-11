@@ -15,7 +15,17 @@ import { clamp } from '../core/rotation';
 import type { Layout, Pose, SensorInstance, SensorSpec, Vec2, Vec3, Vehicle } from '../core/types';
 import { VIEW_NAMES, type ViewName } from '../core/viewport';
 import catalogJson from '../data/sensors.json';
-import { DEFAULT_PREFS, DEFAULT_VEHICLE, loadLayout, loadPrefs, newId, savePrefs, saveLayout } from './persist';
+import {
+  DEFAULT_PREFS,
+  DEFAULT_VEHICLE,
+  loadLayout,
+  loadModels,
+  loadPrefs,
+  newId,
+  savePrefs,
+  saveLayout,
+  saveModels,
+} from './persist';
 
 export interface DisplayOptions {
   volume: boolean;
@@ -75,7 +85,10 @@ export const DEFAULT_VIEWS: ViewsState = {
 export interface AppState {
   vehicle: Vehicle;
   sensors: SensorInstance[];
+  /** Built-ins plus `userModels`. What the picker lists and `effectiveSpec` resolves against. */
   catalog: SensorSpec[];
+  /** Models this person defined. Persisted separately and written into an exported layout. */
+  userModels: SensorSpec[];
   selectedId: string | null;
 
   display: DisplayOptions;
@@ -106,6 +119,13 @@ export interface AppState {
   clearSensors(): void;
   select(id: string | null): void;
   importLayout(l: Layout): void;
+
+  /**
+   * Defines a new model and returns its id. This is the catalogue, not the layout — it adds a
+   * sensor *type*, where `addSensor` mounts one on the vehicle.
+   */
+  addModel(draft: Omit<SensorSpec, 'id'>): string;
+  removeModel(id: string): void;
 
   /** True while the delete prompt is open, naming the sensor it is asking about. */
   pendingDeleteId: string | null;
@@ -182,9 +202,37 @@ export const SENSOR_COLORS = [
   '#E58AAE', // rose
 ];
 
-export const catalog = parseCatalog(catalogJson);
+/** Ships with the app. Read-only: growing it needs a datasheet and a commit. */
+export const builtInCatalog = parseCatalog(catalogJson);
 
 const restored = typeof localStorage === 'undefined' ? null : loadLayout();
+const restoredModels = typeof localStorage === 'undefined' ? [] : loadModels();
+
+/**
+ * Built-ins first, then the person's own models, so the picker lists the shipped entries above
+ * anything hand-made and `parseCatalog`'s order carries through to the grouped dropdown.
+ */
+function mergeCatalog(models: SensorSpec[]): SensorSpec[] {
+  return [...builtInCatalog, ...models];
+}
+
+/** A model id that cannot collide with a built-in or with another session's. */
+function newModelId(): string {
+  return `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Adds models the library does not already know. The local copy wins on an id clash: a spec the
+ * person has since corrected must not be reverted by re-importing an older file.
+ */
+function withModels(existing: SensorSpec[], incoming: SensorSpec[]): SensorSpec[] {
+  const known = new Set(existing.map((m) => m.id));
+  const added = incoming.filter((m) => !known.has(m.id) && !builtInCatalog.some((b) => b.id === m.id));
+  return added.length === 0 ? existing : [...existing, ...added];
+}
+
+/** The autosaved layout carries the models it referenced, so boot folds them back in. */
+const initialModels = withModels(restoredModels, restored?.models ?? []);
 
 
 function nextColor(sensors: SensorInstance[]): string {
@@ -216,7 +264,8 @@ function defaultPose(vehicle: Vehicle): Pose {
 export const useStore = create<AppState>()((set, get) => ({
   vehicle: restored?.vehicle ?? DEFAULT_VEHICLE,
   sensors: restored?.sensors ?? [],
-  catalog,
+  catalog: mergeCatalog(initialModels),
+  userModels: initialModels,
   selectedId: restored?.sensors?.[0]?.id ?? null,
 
   display: DEFAULT_DISPLAY,
@@ -345,7 +394,37 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   importLayout(l) {
-    set({ vehicle: l.vehicle, sensors: l.sensors, selectedId: l.sensors[0]?.id ?? null });
+    // The file's models join the library first, or its sensors would resolve to the default FOV.
+    const userModels = withModels(get().userModels, l.models ?? []);
+    set({
+      vehicle: l.vehicle,
+      sensors: l.sensors,
+      selectedId: l.sensors[0]?.id ?? null,
+      userModels,
+      catalog: mergeCatalog(userModels),
+    });
+  },
+
+  addModel(draft) {
+    const spec: SensorSpec = { ...draft, id: newModelId() };
+    const userModels = [...get().userModels, spec];
+    set({ userModels, catalog: mergeCatalog(userModels) });
+    return spec.id;
+  },
+
+  removeModel(id) {
+    const userModels = get().userModels.filter((m) => m.id !== id);
+    set({
+      userModels,
+      catalog: mergeCatalog(userModels),
+      // Instances keep pointing at a model that is gone, which would silently resolve to the
+      // default FOV. Freeze the numbers they were drawing into each one instead.
+      sensors: get().sensors.map((s) =>
+        s.specId === id
+          ? { ...s, specId: null, custom: effectiveSpec(s, get().catalog), override: undefined }
+          : s,
+      ),
+    });
   },
 
   setDisplay(patch) {
@@ -407,7 +486,15 @@ export const useStore = create<AppState>()((set, get) => ({
 
 /** The exportable slice of the state. */
 export function currentLayout(state: AppState = useStore.getState()): Layout {
-  return { version: 1, vehicle: state.vehicle, sensors: state.sensors };
+  const layout: Layout = { version: 1, vehicle: state.vehicle, sensors: state.sensors };
+
+  // Only the hand-made models these sensors actually use. Built-ins ship with the app, and the
+  // rest of the library is this person's business rather than something to push into every file.
+  const used = new Set(state.sensors.map((s) => s.specId).filter((id): id is string => id !== null));
+  const models = state.userModels.filter((m) => used.has(m.id));
+  if (models.length > 0) layout.models = models;
+
+  return layout;
 }
 
 /* --------------------------------------------------------------- blind spot report */
@@ -562,5 +649,11 @@ if (typeof localStorage !== 'undefined') {
     if (state.vehicle === prev.vehicle && state.sensors === prev.sensors) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => saveLayout(currentLayout(state)), AUTOSAVE_MS);
+  });
+
+  // The library is its own key: defining a model is not an edit to the drawing, and it must
+  // survive Reset, Import and every undo step.
+  useStore.subscribe((state, prev) => {
+    if (state.userModels !== prev.userModels) saveModels(state.userModels);
   });
 }
