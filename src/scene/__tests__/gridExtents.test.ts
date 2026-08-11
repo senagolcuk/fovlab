@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { gridExtents } from '../GroundGrid';
 
 describe('grid extents', () => {
-  it('reproduces the original fixed extents at the 1 m default', () => {
-    expect(gridExtents(1)).toEqual({ fineHalf: 25, majorStep: 10, coarseHalf: 100 });
+  it('gives fine detail to 25 m and a coarse grid to 200 m at the 1 m default', () => {
+    expect(gridExtents(1)).toEqual({ fineHalf: 25, majorStep: 10, coarseHalf: 200 });
   });
 
   it('shrinks its reach for a fine cell rather than drawing more lines', () => {
     const fine = gridExtents(0.1);
     expect(fine.fineHalf).toBeCloseTo(2.5, 10);
     expect(fine.majorStep).toBeCloseTo(1, 10);
-    expect(fine.coarseHalf).toBeCloseTo(10, 10);
+    expect(fine.coarseHalf).toBeCloseTo(20, 10);
   });
 
   it('reaches further for a coarse cell', () => {
-    expect(gridExtents(5)).toEqual({ fineHalf: 125, majorStep: 50, coarseHalf: 500 });
+    expect(gridExtents(5)).toEqual({ fineHalf: 125, majorStep: 50, coarseHalf: 1000 });
   });
 
   it('scales every extent linearly, so the line count never changes', () => {

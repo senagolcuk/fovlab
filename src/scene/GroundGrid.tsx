@@ -5,14 +5,14 @@ import * as THREE from 'three';
 const MAJOR_EVERY = 10;
 /** Fine cells drawn either side of the origin, then major cells beyond. */
 const FINE_CELLS = 25;
-const MAJOR_CELLS = 10;
+const MAJOR_CELLS = 20;
 
 /**
  * How far the two grids reach, for a given cell size in metres.
  *
  * Counted in cells rather than metres, so the line count is the same whatever the spacing is:
  * a 10 mm grid does not cost more to draw than a 1 m one, it just covers less ground. At the
- * 1 m default this reproduces the original fixed extents exactly — fine to 25 m, coarse to 100 m.
+ * 1 m default this gives fine detail to 25 m and a coarse grid out to 200 m.
  */
 export function gridExtents(size: number): {
   fineHalf: number;
