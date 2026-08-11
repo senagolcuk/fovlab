@@ -88,24 +88,30 @@ export default function DisplayPanel() {
         <DragModeControl />
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 1 }}>
         {TOGGLES.map(([key, label]) => (
           <FormControlLabel
             key={key}
+            // Reclaim the 16 px MUI reserves to the right of every label so both
+            // words fit the column and the label never wraps onto a second line.
+            sx={{ mr: 0 }}
             control={
               <Checkbox
                 size="small"
+                // Trim the default 9 px padding so the label has room to stay on one line.
+                sx={{ p: 0.5 }}
                 checked={display[key] as boolean}
                 onChange={(e) => setDisplay({ [key]: e.target.checked })}
               />
             }
             label={label}
-            slotProps={{ typography: { variant: 'body2' } }}
+            slotProps={{ typography: { variant: 'body2', noWrap: true } }}
           />
         ))}
       </Box>
 
       <FormControlLabel
+        sx={{ mt: 1 }}
         control={
           <Switch
             size="small"
@@ -119,6 +125,7 @@ export default function DisplayPanel() {
 
       {/* The only way back once the delete prompt's "don't ask again" has been ticked. */}
       <FormControlLabel
+        sx={{ mt: 1 }}
         control={
           <Switch
             size="small"

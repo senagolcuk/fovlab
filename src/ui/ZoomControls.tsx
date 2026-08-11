@@ -31,7 +31,11 @@ export default function ZoomControls({ variant }: { variant: 'floating' | 'row' 
   );
 
   if (variant === 'row') {
-    return <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>{buttons}</Box>;
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+        {buttons}
+      </Box>
+    );
   }
 
   return (
