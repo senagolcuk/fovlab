@@ -64,14 +64,25 @@ function SensorRow({ id }: { id: string }) {
             flexShrink: 0,
           }}
         />
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography variant="body2" noWrap sx={{ fontWeight: selected ? 600 : 400 }}>
-            {sensor.name}
-          </Typography>
-          <Typography sx={{ fontFamily: MONO, fontSize: 11, color: 'text.secondary' }}>
-            {summary}
-          </Typography>
-        </Box>
+        {/* The name takes the slack and truncates; the summary keeps its width beside the eye. */}
+        <Typography
+          variant="body2"
+          noWrap
+          sx={{ flexGrow: 1, minWidth: 0, fontWeight: selected ? 600 : 400 }}
+        >
+          {sensor.name}
+        </Typography>
+        <Typography
+          sx={{
+            fontFamily: MONO,
+            fontSize: 11,
+            color: 'text.secondary',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          {summary}
+        </Typography>
         <Tooltip title={sensor.visible ? 'Hide' : 'Show'}>
           <IconButton
             size="small"
