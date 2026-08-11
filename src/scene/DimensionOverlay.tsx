@@ -100,6 +100,8 @@ export default function DimensionOverlay({ name, rect }: { name: OrthoName; rect
 
   return (
     <svg
+      // The image exporter finds each pane's dimensions by this attribute.
+      data-pane={name}
       width={rect.width}
       height={rect.height}
       style={{

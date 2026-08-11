@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { View } from '@react-three/drei';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -19,11 +19,15 @@ import DimensionOverlay from './DimensionOverlay';
 import Gizmo from './Gizmo';
 import SceneContent from './SceneContent';
 import { usePaneGestures } from './usePaneGestures';
+import { registerPaneScene, setSceneHandle } from './exportBridge';
 import { AXIS_HINTS, ORTHO_DEFS, fitIso, fitOrtho, sceneBounds, type OrthoName } from './views';
 import { MONO } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
-const BACKGROUND = '#F8FAFB';
+export const BACKGROUND = '#F8FAFB';
+
+/** The exporter reads pixels back off this host; kept here so both sides agree on the id. */
+export const STAGE_DOM_ID = 'fovlab-stage';
 
 /**
  * drei's `<View>` renders with `autoClear` off and r3f's own render pass is disabled once a
@@ -34,6 +38,17 @@ function ClearFrame() {
     gl.setScissorTest(false);
     gl.clear(true, true, true);
   }, 0);
+  return null;
+}
+
+/** Publishes the renderer so the image exporter can capture the panes at any resolution. */
+function ExportBridge() {
+  const gl = useThree((s) => s.gl);
+  const setDpr = useThree((s) => s.setDpr);
+  useEffect(() => {
+    setSceneHandle({ gl, setDpr, getDpr: () => gl.getPixelRatio() });
+    return () => setSceneHandle(null);
+  }, [gl, setDpr]);
   return null;
 }
 
@@ -72,6 +87,17 @@ function PaneLabel({ name, rect }: { name: ViewName; rect: Rect }) {
   );
 }
 
+/** Publishes this pane's scene and camera, so the vector exporter can redraw it as shapes. */
+function PaneRegister({ name }: { name: ViewName }) {
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    registerPaneScene(name, { scene, camera });
+    return () => registerPaneScene(name, null);
+  }, [name, scene, camera]);
+  return null;
+}
+
 function Pane({
   name,
   index,
@@ -107,6 +133,7 @@ function Pane({
     >
       {name === 'ISO' ? <IsoCamera /> : <OrthoCamera name={name as OrthoName} />}
       <SceneContent blindSectors={name === 'TOP'} />
+      <PaneRegister name={name} />
       {name === 'ISO' && <Gizmo />}
     </View>
   );
@@ -169,6 +196,8 @@ export default function Stage() {
   return (
     <Box
       ref={hostRef}
+      // Stable handle so the image exporter can find the viewport and tile it into panes.
+      id={STAGE_DOM_ID}
       sx={{ position: 'absolute', inset: 0, bgcolor: BACKGROUND, overflow: 'hidden' }}
     >
       {size.width > 0 &&
@@ -182,13 +211,16 @@ export default function Stage() {
         // event layer at the pane divs underneath — including the one `TransformControls`
         // listens on. Give the canvas the pointer and the gizmo stops receiving events.
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
-        gl={{ antialias: true, alpha: false }}
+        // `preserveDrawingBuffer` keeps the last frame readable so the image exporter can grab
+        // the panes at any moment rather than only inside the render pass.
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
         onCreated={({ gl }) => gl.setClearColor(BACKGROUND)}
         // Views scissor against the canvas rect, so a stale measurement offsets every pane.
         resize={{ scroll: false, debounce: 0 }}
         flat
       >
         <ClearFrame />
+        <ExportBridge />
         <View.Port />
       </Canvas>
 

@@ -1,18 +1,21 @@
+import { useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import Stage from './scene/Stage';
 import { useStore } from './store/useStore';
 import DeletePrompt from './ui/DeletePrompt';
+import ExportDialog from './ui/ExportDialog';
 import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
 import ZoomControls from './ui/ZoomControls';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
-import { MONO } from './theme';
 
 const MIN_WIDTH = 1280;
 
@@ -42,6 +45,7 @@ function TooNarrow() {
 export default function App() {
   const wideEnough = useMediaQuery(`(min-width:${MIN_WIDTH}px)`);
   useKeyboardShortcuts();
+  const [exportOpen, setExportOpen] = useState(false);
   const linkZoom = useStore((s) => s.linkZoom);
   const setLinkZoom = useStore((s) => s.setLinkZoom);
 
@@ -53,14 +57,17 @@ export default function App() {
         sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
       >
         <Toolbar variant="dense" sx={{ gap: 2 }}>
-          <Typography variant="h6" sx={{ color: 'primary.main' }}>
-            fovlab
-          </Typography>
           <Typography
-            sx={{ fontFamily: MONO, fontSize: 12, color: 'text.secondary' }}
-            title="ISO 8855, right-handed. Origin on the ground at the centre of the footprint."
+            variant="h6"
+            sx={{
+              color: 'primary.main',
+              fontFamily: "'Prompt', sans-serif",
+              fontWeight: 700,
+              fontSize: '1.5rem',
+              letterSpacing: 0.5,
+            }}
           >
-            ISO 8855 · +X forward · +Y left · +Z up
+            fovlab
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <FormControlLabel
@@ -75,6 +82,14 @@ export default function App() {
             slotProps={{ typography: { variant: 'body2' } }}
           />
           <ZoomControls variant="row" />
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<ImageOutlinedIcon />}
+            onClick={() => setExportOpen(true)}
+          >
+            Export
+          </Button>
           <FullscreenButton />
         </Toolbar>
       </AppBar>
@@ -92,6 +107,7 @@ export default function App() {
       )}
 
       <DeletePrompt />
+      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
     </Box>
   );
 }
