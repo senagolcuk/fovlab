@@ -12,7 +12,16 @@ import { blindSpotReport, type BlindSpotReport } from '../core/coverage';
 import { frustum } from '../core/frustum';
 import { groundPolygon } from '../core/ground';
 import { clamp } from '../core/rotation';
-import type { Layout, Pose, SensorInstance, SensorSpec, Vec2, Vec3, Vehicle } from '../core/types';
+import type {
+  Layout,
+  Pose,
+  RangeMode,
+  SensorInstance,
+  SensorSpec,
+  Vec2,
+  Vec3,
+  Vehicle,
+} from '../core/types';
 import { VIEW_NAMES, type ViewName } from '../core/viewport';
 import catalogJson from '../data/sensors.json';
 import {
@@ -20,6 +29,7 @@ import {
   DEFAULT_VEHICLE,
   loadLayout,
   loadModels,
+  DEFAULT_RANGE_MODE,
   loadPrefs,
   newId,
   savePrefs,
@@ -30,8 +40,13 @@ import {
 export interface DisplayOptions {
   volume: boolean;
   edges: boolean;
-  ground: boolean;
   axis: boolean;
+  /**
+   * Whether the part of the FOV under the ground plane is drawn. Off by default: a downward
+   * sensor's volume carries on below z = 0, which is geometrically true and visually noise in
+   * FRONT, LEFT and ISO.
+   */
+  belowGround: boolean;
   opacity: number; // 0.05 - 0.70
   grid: boolean;
   /** Spacing of the fine grid lines, in metres. */
@@ -91,6 +106,12 @@ export interface AppState {
   userModels: SensorSpec[];
   selectedId: string | null;
 
+  /**
+   * Where `range` is measured to. Part of the layout rather than the display options: it changes
+   * the footprint, the blind gap and the coverage percentage, so a file has to carry it.
+   */
+  rangeMode: RangeMode;
+
   display: DisplayOptions;
   linkZoom: boolean;
   dragMode: DragMode;
@@ -142,6 +163,7 @@ export interface AppState {
   canRedo: boolean;
   undo(): void;
   redo(): void;
+  setRangeMode(mode: RangeMode): void;
   setDisplay(patch: Partial<DisplayOptions>): void;
   setLinkZoom(on: boolean): void;
   setDragMode(mode: DragMode): void;
@@ -158,8 +180,8 @@ export interface AppState {
 export const DEFAULT_DISPLAY: DisplayOptions = {
   volume: true,
   edges: true,
-  ground: true,
-  axis: true,
+  axis: false,
+  belowGround: true,
   opacity: 0.3,
   grid: true,
   gridSize: 1,
@@ -267,6 +289,7 @@ export const useStore = create<AppState>()((set, get) => ({
   catalog: mergeCatalog(initialModels),
   userModels: initialModels,
   selectedId: restored?.sensors?.[0]?.id ?? null,
+  rangeMode: restored?.rangeMode ?? DEFAULT_RANGE_MODE,
 
   display: DEFAULT_DISPLAY,
   linkZoom: true,
@@ -401,6 +424,7 @@ export const useStore = create<AppState>()((set, get) => ({
       vehicle: l.vehicle,
       sensors: l.sensors,
       selectedId: l.sensors[0]?.id ?? null,
+      rangeMode: l.rangeMode ?? DEFAULT_RANGE_MODE,
       userModels,
       catalog: mergeCatalog(userModels),
     });
@@ -426,6 +450,10 @@ export const useStore = create<AppState>()((set, get) => ({
           : s,
       ),
     });
+  },
+
+  setRangeMode(mode) {
+    set({ rangeMode: mode });
   },
 
   setDisplay(patch) {
@@ -487,7 +515,12 @@ export const useStore = create<AppState>()((set, get) => ({
 
 /** The exportable slice of the state. */
 export function currentLayout(state: AppState = useStore.getState()): Layout {
-  const layout: Layout = { version: 1, vehicle: state.vehicle, sensors: state.sensors };
+  const layout: Layout = {
+    version: 1,
+    vehicle: state.vehicle,
+    sensors: state.sensors,
+    rangeMode: state.rangeMode,
+  };
 
   // Only the hand-made models these sensors actually use. Built-ins ship with the app, and the
   // rest of the library is this person's business rather than something to push into every file.
@@ -512,7 +545,9 @@ function recomputeBlindReport(state: AppState) {
   const polygons: Vec2[][] = [];
   for (const sensor of state.sensors) {
     if (!sensor.visible) continue;
-    const poly = groundPolygon(frustum(sensor.pose, effectiveSpec(sensor, state.catalog)));
+    const poly = groundPolygon(
+      frustum(sensor.pose, effectiveSpec(sensor, state.catalog), state.rangeMode),
+    );
     if (poly) polygons.push(poly);
   }
   useStore.setState({
@@ -528,7 +563,13 @@ function scheduleBlindReport(state: AppState) {
 }
 
 useStore.subscribe((state, prev) => {
-  if (state.vehicle === prev.vehicle && state.sensors === prev.sensors) return;
+  if (
+    state.vehicle === prev.vehicle &&
+    state.sensors === prev.sensors &&
+    state.rangeMode === prev.rangeMode
+  ) {
+    return;
+  }
   scheduleBlindReport(state);
 });
 

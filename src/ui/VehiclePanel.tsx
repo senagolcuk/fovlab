@@ -6,6 +6,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 import type { VehicleShape } from '../core/types';
 import { LIMITS } from '../store/persist';
+import { CONTROL_LABEL_SX, CONTROL_LABEL_WIDTH } from '../theme';
 import { useStore } from '../store/useStore';
 import NumberField from './NumberField';
 import { Panel } from './Panel';
@@ -72,7 +73,10 @@ export default function VehiclePanel() {
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
-        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+        <Typography
+          variant="caption"
+          sx={{ ...CONTROL_LABEL_SX, width: CONTROL_LABEL_WIDTH, flexShrink: 0 }}
+        >
           Shape
         </Typography>
         <ToggleButtonGroup

@@ -214,7 +214,11 @@ export default function Stage() {
         // `preserveDrawingBuffer` keeps the last frame readable so the image exporter can grab
         // the panes at any moment rather than only inside the render pass.
         gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
-        onCreated={({ gl }) => gl.setClearColor(BACKGROUND)}
+        onCreated={({ gl }) => {
+          gl.setClearColor(BACKGROUND);
+          // Per-material clipping planes are ignored unless this is on.
+          gl.localClippingEnabled = true;
+        }}
         // Views scissor against the canvas rect, so a stale measurement offsets every pane.
         resize={{ scroll: false, debounce: 0 }}
         flat

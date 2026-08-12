@@ -2,6 +2,20 @@
 
 import { createTheme } from '@mui/material/styles';
 
+/**
+ * Width of the little caption that labels a segmented control — Shape, Drag, Range. Shared so the
+ * three option groups start on the same x even though they live in different panels.
+ */
+export const CONTROL_LABEL_WIDTH = 58;
+
+/** The caption that labels a control. `text.secondary` alone reads as disabled next to the rows. */
+export const CONTROL_LABEL_SX = {
+  // Darker than the surrounding captions, but not bold — the weight read as shouting.
+  color: 'text.primary',
+  // Two-word labels have to stay on one line, or the column stops lining up.
+  whiteSpace: 'nowrap',
+} as const;
+
 export const MONO = "'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 
 /**

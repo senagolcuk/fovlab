@@ -1,14 +1,22 @@
 import { memo, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { effectiveSpec } from '../core/catalog';
-import { clampSpec, FRUSTUM_EDGES, FRUSTUM_TRIANGLES, frustum, opticalAxis } from '../core/frustum';
+import { clampSpec, frustum, opticalAxis } from '../core/frustum';
 import { groundPolygon } from '../core/ground';
 import type { SensorInstance, SensorSpec } from '../core/types';
+import type { RangeMode } from '../core/types';
 import type { DisplayOptions } from '../store/useStore';
 
+const MARKER_SIZE = 0.09;
 /** Lifted off the ground plane just enough to beat the grid in the depth test. */
 const GROUND_LIFT = 0.005;
-const MARKER_SIZE = 0.09;
+
+/**
+ * Keeps the volume at or above the ground. A shader clip rather than a geometry cut: the solid
+ * stays one convex polyhedron, so the ground section and every number derived from it are
+ * untouched by what is merely hidden.
+ */
+const GROUND_PLANE = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)];
 
 function flatten(vertices: ReadonlyArray<readonly [number, number, number]>): number[] {
   const out: number[] = [];
@@ -20,11 +28,13 @@ function SensorFov({
   sensor,
   catalog,
   display,
+  rangeMode,
   selected,
 }: {
   sensor: SensorInstance;
   catalog: SensorSpec[];
   display: DisplayOptions;
+  rangeMode: RangeMode;
   selected: boolean;
 }) {
   const spec = useMemo(
@@ -35,17 +45,17 @@ function SensorFov({
   const pose = sensor.pose;
 
   const geometry = useMemo(() => {
-    const f = frustum(pose, spec);
+    const f = frustum(pose, spec, rangeMode);
     const positions = flatten(f.vertices);
 
     const volume = new THREE.BufferGeometry();
     volume.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    volume.setIndex(FRUSTUM_TRIANGLES.flatMap((t) => [t[0], t[1], t[2]]));
+    volume.setIndex(f.triangles.flatMap((t) => [t[0], t[1], t[2]]));
     volume.computeVertexNormals();
 
     const edges = new THREE.BufferGeometry();
     edges.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    edges.setIndex(FRUSTUM_EDGES.flatMap((e) => [e[0], e[1]]));
+    edges.setIndex(f.outline.flatMap((e) => [e[0], e[1]]));
 
     const axisDir = opticalAxis(pose);
     const axis = new THREE.BufferGeometry();
@@ -64,16 +74,21 @@ function SensorFov({
       ),
     );
 
+    /**
+     * The footprint. Clipping the volume at the ground leaves the cut open, so you look straight
+     * through the shell into the grid; this closes it. Only drawn when the clip is on, since with
+     * the volume carrying on below ground there is no cut to cover.
+     */
     const poly = groundPolygon(f);
     let ground: THREE.BufferGeometry | null = null;
-    let outline: THREE.BufferGeometry | null = null;
+    let footprint: THREE.BufferGeometry | null = null;
 
     if (poly) {
       const flat: number[] = [];
       for (const [x, y] of poly) flat.push(x, y, GROUND_LIFT);
 
-      outline = new THREE.BufferGeometry();
-      outline.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
+      footprint = new THREE.BufferGeometry();
+      footprint.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
 
       ground = new THREE.BufferGeometry();
       ground.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
@@ -82,8 +97,19 @@ function SensorFov({
       ground.setIndex(index);
     }
 
-    return { volume, edges, axis, ground, outline };
-  }, [pose.x, pose.y, pose.z, pose.yaw, pose.pitch, pose.roll, spec.hfov, spec.vfov, spec.range]);
+    return { volume, edges, axis, ground, footprint };
+  }, [
+    pose.x,
+    pose.y,
+    pose.z,
+    pose.yaw,
+    pose.pitch,
+    pose.roll,
+    spec.hfov,
+    spec.vfov,
+    spec.range,
+    rangeMode,
+  ]);
 
   /**
    * A pose changes on every frame of a drag, so this rebuilds constantly. r3f only disposes
@@ -100,6 +126,12 @@ function SensorFov({
   if (!sensor.visible) return null;
 
   const opacity = display.opacity * (selected ? 1.25 : 1);
+  /**
+   * `null`, never `undefined`. three guards local clipping with `planes === null`, so an
+   * `undefined` slips past it and the renderer then reads `undefined.length` — which throws
+   * inside the render loop and takes the whole volume off screen.
+   */
+  const clip = display.belowGround ? null : GROUND_PLANE;
 
   return (
     <group>
@@ -111,6 +143,7 @@ function SensorFov({
             opacity={Math.min(opacity, 0.85)}
             depthWrite={false}
             side={THREE.DoubleSide}
+            clippingPlanes={clip}
           />
         </mesh>
       )}
@@ -122,30 +155,31 @@ function SensorFov({
             transparent
             opacity={selected ? 1 : 0.75}
             depthWrite={false}
+            clippingPlanes={clip}
           />
         </lineSegments>
       )}
 
       {display.axis && (
         <lineSegments geometry={geometry.axis} renderOrder={3}>
-          <lineBasicMaterial color={sensor.color} depthWrite={false} />
+          <lineBasicMaterial color={sensor.color} depthWrite={false} clippingPlanes={clip} />
         </lineSegments>
       )}
 
-      {display.ground && geometry.ground && (
+      {!display.belowGround && geometry.ground && (
         <mesh geometry={geometry.ground} renderOrder={1}>
           <meshBasicMaterial
             color={sensor.color}
             transparent
-            opacity={Math.min(opacity * 1.4, 0.9)}
+            opacity={Math.min(opacity * 1.9, 0.92)}
             depthWrite={false}
             side={THREE.DoubleSide}
           />
         </mesh>
       )}
 
-      {display.ground && geometry.outline && (
-        <lineLoop geometry={geometry.outline} renderOrder={4}>
+      {!display.belowGround && geometry.footprint && (
+        <lineLoop geometry={geometry.footprint} renderOrder={4}>
           <lineBasicMaterial color={sensor.color} depthWrite={false} />
         </lineLoop>
       )}

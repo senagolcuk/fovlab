@@ -14,11 +14,15 @@ import type {
   Pose,
   SensorInstance,
   SensorSpec,
+  RangeMode,
   Vehicle,
   VehicleShape,
 } from '../core/types';
 
 const SHAPES: VehicleShape[] = ['box', 'rounded', 'cylinder'];
+
+/** New layouts measure range radially; it is the reading of "range" an engineer expects. */
+export const DEFAULT_RANGE_MODE: RangeMode = 'radial';
 
 export const STORAGE_KEY = 'sensor-fov.layout.v1';
 
@@ -168,6 +172,8 @@ export function sanitizeLayout(raw: unknown): Layout | null {
       .map((s, i) => sanitizeSensor(s, i))
       .filter((s): s is SensorInstance => s !== null),
   };
+
+  if (l.rangeMode === 'axis' || l.rangeMode === 'radial') layout.rangeMode = l.rangeMode;
 
   // Absent in files written before models existed, and in files that only use built-in entries.
   if (Array.isArray(l.models)) {
