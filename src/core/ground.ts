@@ -7,7 +7,6 @@
  */
 
 import { footprintPolygon, isInsideFootprint } from './footprint';
-import { FRUSTUM_EDGES } from './frustum';
 import type { Frustum, GroundCoverage, Pose, Vec2, Vec3, Vehicle } from './types';
 
 /** Two vertices closer than this collapse into one. */
@@ -84,7 +83,7 @@ export function groundPolygon(f: Frustum): Vec2[] | null {
   const v = f.vertices;
   const hits: Vec2[] = [];
 
-  for (const [i, j] of FRUSTUM_EDGES) {
+  for (const [i, j] of f.edges) {
     const a: Vec3 = v[i];
     const b: Vec3 = v[j];
     if (a[2] === b[2]) continue;

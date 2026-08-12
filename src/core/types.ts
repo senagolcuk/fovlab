@@ -86,6 +86,8 @@ export interface Layout {
   version: 1;
   vehicle: Vehicle;
   sensors: SensorInstance[];
+  /** Where `range` is measured to. Absent in files written before the setting existed. */
+  rangeMode?: RangeMode;
   /**
    * User-created models the sensors above refer to.
    *
@@ -96,10 +98,31 @@ export interface Layout {
   models?: SensorSpec[];
 }
 
-/** Apex plus the four far corners of the FOV pyramid, in world coordinates. */
+/**
+ * Where `range` is measured to.
+ *
+ * `axis` puts a flat plane at `range` along the optical axis, so the corners of a wide sensor
+ * reach much further than the stated figure — 3.9x for a 150°x20° radar. `radial` puts a
+ * spherical cap there instead, so every direction stops at exactly `range` and the footprint
+ * reads as a fan. The lateral faces are the same cone either way; only the far surface differs.
+ */
+export type RangeMode = 'axis' | 'radial';
+
+/**
+ * The FOV volume as a convex polyhedron. `axis` gives the five-vertex pyramid; `radial`
+ * tessellates the spherical cap, which is why the vertex count is not fixed.
+ */
 export interface Frustum {
-  /** `[apex, farTopLeft, farTopRight, farBottomRight, farBottomLeft]` */
-  vertices: [Vec3, Vec3, Vec3, Vec3, Vec3];
+  /** Index 0 is the apex. */
+  vertices: Vec3[];
+  /** Full topology. What the ground section walks, so the arc gets resolved. */
+  edges: ReadonlyArray<readonly [number, number]>;
+  /**
+   * What the wireframe draws: the silhouette only. Drawing every tessellation edge turns a fan
+   * into a fishing net.
+   */
+  outline: ReadonlyArray<readonly [number, number]>;
+  triangles: ReadonlyArray<readonly [number, number, number]>;
 }
 
 /** Everything derived from one sensor's ground intersection. */

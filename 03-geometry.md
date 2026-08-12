@@ -43,8 +43,29 @@ export function rotationMatrix(yawDeg: number, pitchDeg: number, rollDeg: number
 
 ## FOV volume
 
-A **rectangular pyramid** with a flat far **plane** at `range` measured along the optical axis —
-not a sphere, not a spherical cap.
+A **rectangular cone** whose far surface is one of two things, chosen by `Layout.rangeMode`:
+
+| mode | far surface | `range` means |
+|---|---|---|
+| `axis` | a flat plane at `range` along the optical axis | distance along the boresight |
+| `radial` | a spherical cap of radius `range` | distance in **every** direction |
+
+`axis` is the original model and stays exactly as specified below. It has one consequence worth
+stating: the corners reach `range · √(1 + tan²(h/2) + tan²(v/2))`, which for a 150°×20° radar at
+80 m is **309 m**. Every number the tool derives — footprint, blind gap, coverage percentage —
+counts that overshoot as coverage.
+
+`radial` sweeps the same directions but normalises them to `range`, so the corners stop where the
+datasheet says and the footprint reads as a fan. **The lateral faces are identical in both modes**
+— fixing `u = ±1` still spans a plane — which is why every acceptance test about the near edge
+holds unchanged.
+
+The cap is tessellated (12 × 6) so the solid stays a convex polyhedron and the ground section
+below needs no new algorithm; the far edge of the footprint comes out as a fine polyline rather
+than a true arc. The wireframe draws `Frustum.outline` — the rim and four spokes — rather than
+every tessellation edge.
+
+The rest of this section describes the `axis` pyramid.
 
 With `ty = tan(hfov/2)`, `tz = tan(vfov/2)`, `R_ = range`, the four far corners in the local
 frame are:
