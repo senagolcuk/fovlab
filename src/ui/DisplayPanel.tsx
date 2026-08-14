@@ -19,6 +19,7 @@ const TOGGLES: Array<[keyof DisplayOptions, string]> = [
   ['edges', 'Wireframe edges'],
   ['axis', 'Optical axis'],
   ['belowGround', 'FOV below ground'],
+  ['mergeFovs', 'Merge overlaps'],
 ];
 
 export default function DisplayPanel() {
@@ -130,15 +131,30 @@ export default function DisplayPanel() {
                 // Trim the default 9 px padding so the label has room to stay on one line.
                 sx={{ p: 0.5 }}
                 checked={display[key] as boolean}
+                // The silhouette is what the merge exists to hide, so the control that draws it
+                // stands down rather than sitting there ticked and doing nothing.
+                disabled={key === 'edges' && display.mergeFovs}
                 onChange={(e) => setDisplay({ [key]: e.target.checked })}
               />
             }
             label={label}
-            slotProps={{ typography: { variant: 'body2', noWrap: true } }}
+            slotProps={{
+              typography: {
+                variant: 'body2',
+                noWrap: true,
+                color: key === 'edges' && display.mergeFovs ? 'text.disabled' : undefined,
+              },
+            }}
           />
         ))}
       </Box>
 
+      {display.mergeFovs && (
+        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 1 }}>
+          Overlaps stop compounding and the coverage draws as one shape. Every sensor keeps its
+          own range — only the shading merges.
+        </Typography>
+      )}
     </Panel>
   );
 }

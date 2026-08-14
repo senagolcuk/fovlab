@@ -1,15 +1,13 @@
 import { memo, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { effectiveSpec } from '../core/catalog';
-import { clampSpec, frustum, opticalAxis } from '../core/frustum';
-import { groundPolygon } from '../core/ground';
+import { clampSpec, opticalAxis } from '../core/frustum';
 import type { SensorInstance, SensorSpec } from '../core/types';
 import type { RangeMode } from '../core/types';
 import type { DisplayOptions } from '../store/useStore';
+import { fovBuffers, toBufferGeometry } from './fovGeometry';
 
 const MARKER_SIZE = 0.09;
-/** Lifted off the ground plane just enough to beat the grid in the depth test. */
-const GROUND_LIFT = 0.005;
 
 /**
  * Keeps the volume at or above the ground. A shader clip rather than a geometry cut: the solid
@@ -17,12 +15,6 @@ const GROUND_LIFT = 0.005;
  * untouched by what is merely hidden.
  */
 const GROUND_PLANE = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)];
-
-function flatten(vertices: ReadonlyArray<readonly [number, number, number]>): number[] {
-  const out: number[] = [];
-  for (const v of vertices) out.push(v[0], v[1], v[2]);
-  return out;
-}
 
 function SensorFov({
   sensor,
@@ -45,17 +37,16 @@ function SensorFov({
   const pose = sensor.pose;
 
   const geometry = useMemo(() => {
-    const f = frustum(pose, spec, rangeMode);
-    const positions = flatten(f.vertices);
+    const buffers = fovBuffers(pose, spec, rangeMode);
 
     const volume = new THREE.BufferGeometry();
-    volume.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    volume.setIndex(f.triangles.flatMap((t) => [t[0], t[1], t[2]]));
+    volume.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
+    volume.setIndex(buffers.triangles);
     volume.computeVertexNormals();
 
     const edges = new THREE.BufferGeometry();
-    edges.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    edges.setIndex(f.outline.flatMap((e) => [e[0], e[1]]));
+    edges.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
+    edges.setIndex(buffers.outline);
 
     const axisDir = opticalAxis(pose);
     const axis = new THREE.BufferGeometry();
@@ -79,22 +70,16 @@ function SensorFov({
      * through the shell into the grid; this closes it. Only drawn when the clip is on, since with
      * the volume carrying on below ground there is no cut to cover.
      */
-    const poly = groundPolygon(f);
     let ground: THREE.BufferGeometry | null = null;
     let footprint: THREE.BufferGeometry | null = null;
 
-    if (poly) {
-      const flat: number[] = [];
-      for (const [x, y] of poly) flat.push(x, y, GROUND_LIFT);
-
+    if (buffers.footprint) {
+      ground = toBufferGeometry(buffers.footprint);
       footprint = new THREE.BufferGeometry();
-      footprint.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
-
-      ground = new THREE.BufferGeometry();
-      ground.setAttribute('position', new THREE.Float32BufferAttribute(flat, 3));
-      const index: number[] = [];
-      for (let i = 1; i < poly.length - 1; i++) index.push(0, i, i + 1);
-      ground.setIndex(index);
+      footprint.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(buffers.footprint.positions, 3),
+      );
     }
 
     return { volume, edges, axis, ground, footprint };
@@ -127,6 +112,13 @@ function SensorFov({
 
   const opacity = display.opacity * (selected ? 1.25 : 1);
   /**
+   * While merged, `MergedFov` draws the volume, the footprint and nothing else. The per-sensor
+   * shell, its silhouette and its outline would each betray the individual frusta the merge
+   * exists to hide, so they stand down. The marker and the optical axis stay: they belong to the
+   * sensor rather than to its field of view, and they are how one is still picked out by colour.
+   */
+  const merged = display.mergeFovs;
+  /**
    * `null`, never `undefined`. three guards local clipping with `planes === null`, so an
    * `undefined` slips past it and the renderer then reads `undefined.length` — which throws
    * inside the render loop and takes the whole volume off screen.
@@ -135,7 +127,7 @@ function SensorFov({
 
   return (
     <group>
-      {display.volume && (
+      {display.volume && !merged && (
         <mesh geometry={geometry.volume} renderOrder={2}>
           <meshBasicMaterial
             color={sensor.color}
@@ -148,7 +140,7 @@ function SensorFov({
         </mesh>
       )}
 
-      {display.edges && (
+      {display.edges && !merged && (
         <lineSegments geometry={geometry.edges} renderOrder={3}>
           <lineBasicMaterial
             color={sensor.color}
@@ -162,11 +154,16 @@ function SensorFov({
 
       {display.axis && (
         <lineSegments geometry={geometry.axis} renderOrder={3}>
-          <lineBasicMaterial color={sensor.color} depthWrite={false} clippingPlanes={clip} />
+          <lineBasicMaterial
+            color={sensor.color}
+            depthWrite={false}
+            depthTest={!merged}
+            clippingPlanes={clip}
+          />
         </lineSegments>
       )}
 
-      {!display.belowGround && geometry.ground && (
+      {!display.belowGround && !merged && geometry.ground && (
         <mesh geometry={geometry.ground} renderOrder={1}>
           <meshBasicMaterial
             color={sensor.color}
@@ -178,15 +175,23 @@ function SensorFov({
         </mesh>
       )}
 
-      {!display.belowGround && geometry.footprint && (
+      {!display.belowGround && !merged && geometry.footprint && (
         <lineLoop geometry={geometry.footprint} renderOrder={4}>
           <lineBasicMaterial color={sensor.color} depthWrite={false} />
         </lineLoop>
       )}
 
-      <mesh position={[pose.x, pose.y, pose.z]} renderOrder={5}>
+      <mesh position={[pose.x, pose.y, pose.z]} renderOrder={merged ? 10 : 5}>
         <boxGeometry args={[MARKER_SIZE, MARKER_SIZE, MARKER_SIZE]} />
-        <meshBasicMaterial color={selected ? '#1D1B20' : sensor.color} />
+        {/*
+          While merged the volume paints last, so an opaque marker would end up under it. Joining
+          the same render list at a higher order puts it back on top, crisp rather than tinted.
+        */}
+        <meshBasicMaterial
+          color={selected ? '#1D1B20' : sensor.color}
+          transparent={merged}
+          depthTest={!merged}
+        />
       </mesh>
 
       {selected && (

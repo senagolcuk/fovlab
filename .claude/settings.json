@@ -19,7 +19,14 @@
       "Bash(npx vite *)",
       "Bash(curl -sf http://localhost:5173/)",
       "Bash(break)",
-      "Bash(curl -s -o /dev/null -w \"http %{http_code}\\\\n\" http://localhost:5173/)"
+      "Bash(curl -s -o /dev/null -w \"http %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(npm test *)",
+      "Bash(sed -n '/export interface DisplayOptions/,/^}/p' src/store/useStore.ts)",
+      "Bash(sed -n '/export const DEFAULT_DISPLAY/,/^};/p' src/store/useStore.ts)",
+      "Bash(echo \"=== PALETTE ===\"; sed -n '/PALETTE/,/^};/p' src/theme.ts | head -40; echo; echo \"=== prefs persistence ===\"; grep -n \"prefs\\\\|PREFS\\\\|display\" src/store/persist.ts | head -20)"
+    ],
+    "additionalDirectories": [
+      "/home/sena/projects/fov/src"
     ]
   }
 }

@@ -1,8 +1,17 @@
+import * as THREE from 'three';
 import { useStore } from '../store/useStore';
 import BlindSectors from './BlindSectors';
 import GroundGrid from './GroundGrid';
+import MergedFov from './MergedFov';
 import SensorFov from './SensorFov';
 import VehicleBody from './Vehicle';
+
+/**
+ * Keeps the volume at or above the ground. A shader clip rather than a geometry cut: the solid
+ * stays one polyhedron, so the ground section and every number derived from it are untouched by
+ * what is merely hidden.
+ */
+const GROUND_PLANE = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)];
 
 /** The scene body, rendered once per pane — each `<View>` has its own virtual scene. */
 export default function SceneContent({ blindSectors = false }: { blindSectors?: boolean }) {
@@ -30,6 +39,15 @@ export default function SceneContent({ blindSectors = false }: { blindSectors?: 
         />
       )}
       {display.vehicle && <VehicleBody vehicle={vehicle} wheels={display.wheels} />}
+      {display.mergeFovs && (
+        <MergedFov
+          sensors={sensors}
+          catalog={catalog}
+          display={display}
+          rangeMode={rangeMode}
+          clip={display.belowGround ? null : GROUND_PLANE}
+        />
+      )}
       {sensors.map((sensor) => (
         <SensorFov
           key={sensor.id}

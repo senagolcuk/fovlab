@@ -43,6 +43,8 @@ What exists and works:
 - Vehicle body in three shapes — box, rounded, cylinder — with wheels, nose marker and a ground grid
   whose cell size is settable. FOV volume, wireframe, optical axis, ground footprint and marker per
   sensor. Dimension lines over the orthographic panes.
+- An optional merged draw: every visible FOV as one shape in one colour, so overlaps stop
+  compounding. Shading only — each sensor keeps its own range.
 - Sidebar: vehicle, display, sensor list with inline editor, coverage report, navigation help.
   JSON export and import, localStorage autosave, Reset, fullscreen.
 - Dragging, gated behind the `Drag` control: direct 2D drag in TOP, `TransformControls` gizmo in
@@ -141,7 +143,28 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     since corrected. Deleting a model freezes its numbers into the instances that used it rather
     than letting them fall through to the default.
 
-15. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
+15. **The merged FOV is a depth trick, not a mesh boolean.** `Display > Merge overlaps` draws every
+    visible volume as one shape by recording the nearest surface in a depth-only pass and then
+    painting only fragments at exactly that depth. Three things about `scene/MergedFov.tsx` look
+    wrong and are not:
+
+    - The depth pre-pass materials carry `transparent: true` even though `colorWrite` is `false`.
+      That is not for blending — it is what puts the pre-pass and the colour pass in the same
+      render list, so `renderOrder` decides their sequence. Left opaque, three runs every pre-pass
+      before any colour pass and the depth references trample each other.
+    - The far surface is drawn **before** the near one. A front face is always nearer, so the near
+      pass overwrites the far pass's depth. Reversed, the far pass finds nothing to match.
+    - It is two layers, not one. That is what a single FOV already looks like — its shell is drawn
+      double-sided — so collapsing to one layer made a lone sensor change appearance the moment the
+      merge was switched on, which is exactly what a merge must not do. Measured: with one sensor,
+      merged and unmerged differ only along a one-pixel antialiasing seam at the silhouette, where
+      edge fragments fail the depth equality test. The interiors are identical.
+
+    Footprints are lifted by `FOOTPRINT_STEP` each so the nearest-surface test can tell coplanar
+    ones apart; twenty sensors span 2 mm. Nothing about the geometry changes — this is shading
+    only, and every range, area and coverage number is untouched.
+
+16. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
     nothing geometric reads the field — it only ever labels.
 
 ---
@@ -273,6 +296,17 @@ so open it and click `Add sensor`.
 10. Turn `Dimensions` on. Each orthographic pane shows the figures it can measure. Zoom out far —
     dimensions disappear rather than colliding, and none ever draws over a neighbouring pane.
 11. Turn `Vehicle` off. The body and wheels go, the sensors stay, and the `Wheels` toggle greys out.
+
+**Merging**
+
+11a. Point three overlapping sensors forward. With `Merge overlaps` off, the overlaps read darker
+     and each fan keeps its colour. Turn it on: one shape, one colour, no darker wedges, and the
+     outer extent is unchanged — every sensor still reaches exactly as far as it did. `Wireframe
+     edges` greys out, since the silhouette is what the merge exists to hide.
+11b. Hide all but one sensor. Merged and unmerged must look the same: a merge that changes a lone
+     sensor is drawing something other than that sensor.
+11c. Markers stay their own colour and stay on top of the merged fill — the field of view merges,
+     the sensors stay identifiable.
 
 **Editing**
 

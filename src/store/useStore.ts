@@ -58,6 +58,12 @@ export interface DisplayOptions {
   dimensions: boolean;
   /** Shade uncovered azimuth sectors on the ground, in the TOP pane only. */
   blindSectors: boolean;
+  /**
+   * Draw every visible FOV as one volume in one colour, so overlaps stop compounding and the
+   * coverage reads as a single shape. Purely a shading change — each sensor keeps its own pose,
+   * angles and range, and the merged draw covers exactly the space the separate draws did.
+   */
+  mergeFovs: boolean;
 }
 
 export type DragMode = 'off' | 'translate' | 'rotate';
@@ -189,6 +195,7 @@ export const DEFAULT_DISPLAY: DisplayOptions = {
   wheels: true,
   dimensions: false,
   blindSectors: true,
+  mergeFovs: false,
 };
 
 /** Grid spacing bounds, in metres. */
