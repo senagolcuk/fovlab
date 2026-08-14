@@ -145,27 +145,33 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
 
 15. **The merged FOV is a depth trick, not a mesh boolean.** `Display > Merge overlaps` draws every
     visible volume as one shape by recording the nearest surface in a depth-only pass and then
-    letting only that surface paint. Four things about `scene/MergedFov.tsx` look wrong and are not:
+    letting only that surface paint. Four things about `scene/MergedFov.tsx` look wrong and are not,
+    and three of them were arrived at by getting them wrong first:
 
     - The depth pass writes `DEPTH_BIAS` *behind* itself and the colour pass tests `less`, rather
       than testing equality. Equality is the obvious reading and it is wrong: a fragment on a
       shared triangle edge can be rasterised by either neighbour, and the two interpolate depth to
       values differing in the last bit, so the seam goes unpainted. On a triangle fan that draws
-      every spoke as a ray from the apex — which is exactly what it did until the bias went in.
+      every spoke as a ray from the apex.
+    - `polygonOffsetFactor` is 0. The slope term is what a shadow map wants; here it over-biases
+      exactly the polygons that are steepest in view — a lateral face seen edge-on — until the
+      surface behind passes the test too and the fold paints twice. The tie being broken is a
+      last-bit one, so a constant is the whole of it.
+    - It is **one** layer, drawn double-sided, not a front pass over a back pass. The shell version
+      looks more faithful — a single FOV is drawn double-sided, so front and back both paint — and
+      it is wrong here for a reason that only shows up with more than one sensor: at every fold the
+      two layers converge on the same depth and both paint, so each internal crease draws as a dark
+      line. Those creases are precisely what the merge exists to hide.
 
-    - The depth pre-pass materials carry `transparent: true` even though `colorWrite` is `false`.
-      That is not for blending — it is what puts the pre-pass and the colour pass in the same
-      render list, so `renderOrder` decides their sequence. Left opaque, three runs every pre-pass
-      before any colour pass and the depth references trample each other.
-    - The far surface is drawn **before** the near one. A front face is always nearer, so the near
-      pass overwrites the far pass's depth. Reversed, the far pass finds nothing to match.
-    - It is two layers, not one. That is what a single FOV already looks like — its shell is drawn
-      double-sided — so collapsing to one layer made a lone sensor change appearance the moment the
-      merge was switched on, which is exactly what a merge must not do.
+      The honest cost of the flat version: a lone sensor looks flatter merged than unmerged, and
+      the volume reads as a silhouette rather than a shell. That was the trade the option was
+      chosen on — "tek renk, düz doluluk" — so do not "fix" it by adding the second layer back.
+    - The depth pass materials carry `transparent: true` even though `colorWrite` is `false`. That
+      is not for blending — it is what puts the pre-pass and the colour pass in the same render
+      list, so `renderOrder` decides their sequence. Left opaque, three runs every pre-pass before
+      any colour pass and the depth references trample each other.
 
-    Measured after the change: a lone sensor still differs only along the one-pixel silhouette
-    seam, so the bias does not let a second layer through. Footprints are lifted by
-    `FOOTPRINT_STEP` each so the nearest-surface test can tell coplanar
+    Footprints are lifted by `FOOTPRINT_STEP` each so the nearest-surface test can tell coplanar
     ones apart; twenty sensors span 2 mm. Nothing about the geometry changes — this is shading
     only, and every range, area and coverage number is untouched.
 
@@ -308,8 +314,9 @@ so open it and click `Add sensor`.
      and each fan keeps its colour. Turn it on: one shape, one colour, no darker wedges, and the
      outer extent is unchanged — every sensor still reaches exactly as far as it did. `Wireframe
      edges` greys out, since the silhouette is what the merge exists to hide.
-11b. Hide all but one sensor. Merged and unmerged must look the same: a merge that changes a lone
-     sensor is drawing something other than that sensor.
+11b. Look along the creases where two volumes meet, in TOP and in ISO, with `FOV below ground`
+     both on and off. There must be no line down a fold and no ray from a sensor's apex. A lone
+     sensor does read flatter merged than unmerged — that is the flat fill working, not a bug.
 11c. Markers stay their own colour and stay on top of the merged fill — the field of view merges,
      the sensors stay identifiable.
 

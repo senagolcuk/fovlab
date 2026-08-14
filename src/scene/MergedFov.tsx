@@ -45,6 +45,13 @@ export const MERGE_COLOR = PALETTE.blue;
  * anything genuinely further back.
  */
 const DEPTH_BIAS = 1;
+/**
+ * Slope scaling stays off. It is what a shadow map wants, but here it over-biases exactly the
+ * polygons that are steepest in view — a lateral face seen edge-on — until the surface behind
+ * passes the test too and the fold paints twice. The tie being broken is a last-bit one, so a
+ * constant is the whole of it.
+ */
+const DEPTH_BIAS_SLOPE = 0;
 
 /**
  * One layer of colour over a whole set, whatever the overlaps.
@@ -78,7 +85,7 @@ function UnionLayer({
           transparent
           depthWrite
           polygonOffset
-          polygonOffsetFactor={DEPTH_BIAS}
+          polygonOffsetFactor={DEPTH_BIAS_SLOPE}
           polygonOffsetUnits={DEPTH_BIAS}
           side={side}
           clippingPlanes={clip}
@@ -97,52 +104,6 @@ function UnionLayer({
           clippingPlanes={clip}
         />
       </mesh>
-    </>
-  );
-}
-
-/**
- * The merged volume: far surface, then near surface.
- *
- * Two layers rather than one, because that is what a single FOV already looks like — its shell is
- * drawn double-sided, so you see where the volume ends as well as where it starts. Collapsing to
- * one layer made a lone sensor change appearance the moment the merge was switched on, which is
- * exactly what a merge must not do. Two passes also cap the depth: N overlapping volumes still
- * paint twice, never N times.
- *
- * Order matters. The far pass runs first and leaves the nearest back face in the depth buffer;
- * the near pass then overwrites it, because a front face is always nearer. Reversed, the near
- * surface's depth would still be sitting there and the far pass would find nothing to match.
- */
-function UnionVolume({
-  geometry,
-  opacity,
-  renderOrder,
-  clip,
-}: {
-  geometry: THREE.BufferGeometry;
-  opacity: number;
-  renderOrder: number;
-  clip: THREE.Plane[] | null;
-}) {
-  return (
-    <>
-      <UnionLayer
-        geometry={geometry}
-        color={MERGE_COLOR}
-        opacity={opacity}
-        renderOrder={renderOrder}
-        side={THREE.BackSide}
-        clip={clip}
-      />
-      <UnionLayer
-        geometry={geometry}
-        color={MERGE_COLOR}
-        opacity={opacity}
-        renderOrder={renderOrder + 2}
-        side={THREE.FrontSide}
-        clip={clip}
-      />
     </>
   );
 }
@@ -198,10 +159,12 @@ export default function MergedFov({
   return (
     <>
       {display.volume && geometry.volume && (
-        <UnionVolume
+        <UnionLayer
           geometry={geometry.volume}
+          color={MERGE_COLOR}
           opacity={Math.min(display.opacity, 0.85)}
           renderOrder={3}
+          side={THREE.DoubleSide}
           clip={clip}
         />
       )}
