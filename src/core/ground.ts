@@ -7,6 +7,7 @@
  */
 
 import { footprintPolygon, isInsideFootprint } from './footprint';
+import { bodyTopAt } from './profile';
 import type { Frustum, GroundCoverage, Pose, Vec2, Vec3, Vehicle } from './types';
 
 /** Two vertices closer than this collapse into one. */
@@ -175,7 +176,8 @@ export function isInsideBody(pose: Pose, vehicle: Vehicle): boolean {
   return (
     isInsideFootprint([pose.x, pose.y], vehicle) &&
     pose.z >= vehicle.clearance &&
-    pose.z <= vehicle.clearance + vehicle.height
+    // The roofline, not the overall height: a camera above a car's bonnet is in clear air.
+    pose.z <= bodyTopAt(pose.x, vehicle)
   );
 }
 

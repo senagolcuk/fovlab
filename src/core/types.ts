@@ -17,6 +17,12 @@ export type Mat3 = [
 ];
 
 /**
+ * The body style. `bus` is one block the whole length — what the tool drew before there was a
+ * choice — so it stays the value a layout without one falls back to.
+ */
+export type VehicleModel = 'car' | 'van' | 'bus';
+
+/**
  * Plan-view outline of the body. All three are one family — a rectangle shrunk by a corner
  * radius and inflated back by it — so every distance the tool measures stays closed form.
  * `cylinder` is that radius taken to its maximum: a circle when length equals width, and a
@@ -33,6 +39,8 @@ export interface Vehicle {
   wheelbase: number; // m
   wheelRadius: number; // m
   shape: VehicleShape;
+  /** Which roofline the body has. The plan outline is the same for all of them. */
+  model: VehicleModel;
   /** Plan-view corner radius in metres. Only read when `shape` is `rounded`. */
   cornerRadius: number;
 }

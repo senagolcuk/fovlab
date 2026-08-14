@@ -11,6 +11,7 @@ const vehicle: Vehicle = {
   wheelbase: 2.8,
   wheelRadius: 0.34,
   shape: 'box',
+  model: 'bus',
   cornerRadius: 0,
 };
 // box: x ±2.4, y ±0.95, z 0.2 … 1.7

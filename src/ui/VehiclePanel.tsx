@@ -4,7 +4,7 @@ import Switch from '@mui/material/Switch';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import type { VehicleShape } from '../core/types';
+import type { VehicleModel, VehicleShape } from '../core/types';
 import { LIMITS } from '../store/persist';
 import { CONTROL_LABEL_SX, CONTROL_LABEL_WIDTH } from '../theme';
 import { useStore } from '../store/useStore';
@@ -70,6 +70,35 @@ export default function VehiclePanel() {
           max={LIMITS.wheelRadius[1]}
           onChange={(wheelRadius) => setVehicle({ wheelRadius })}
         />
+      </Box>
+
+      {/*
+        Which roofline the body has. The plan outline is `Shape`'s business, and the two are
+        independent: a van is as entitled to rounded corners as a bus.
+      */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>
+        <Typography
+          variant="caption"
+          sx={{ ...CONTROL_LABEL_SX, width: CONTROL_LABEL_WIDTH, flexShrink: 0 }}
+        >
+          Model
+        </Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={vehicle.model}
+          onChange={(_, v: VehicleModel | null) => v && setVehicle({ model: v })}
+        >
+          <ToggleButton value="car" sx={{ px: 1.25, py: 0.25 }}>
+            Car
+          </ToggleButton>
+          <ToggleButton value="van" sx={{ px: 1.25, py: 0.25 }}>
+            Van
+          </ToggleButton>
+          <ToggleButton value="bus" sx={{ px: 1.25, py: 0.25 }}>
+            Bus
+          </ToggleButton>
+        </ToggleButtonGroup>
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2 }}>

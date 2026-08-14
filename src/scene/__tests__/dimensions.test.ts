@@ -53,6 +53,7 @@ describe('vehicle dimension annotations', () => {
       wheelbase: 3.9,
       wheelRadius: 0.4,
       shape: 'box',
+      model: 'bus',
       cornerRadius: 0,
     };
     const labels = new Set(PANES.flatMap((n) => dimensionsFor(n, v).map((d) => d.label)));

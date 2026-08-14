@@ -7,6 +7,7 @@
 
 import { parseCatalog } from '../core/catalog';
 import { clampFov, clampRange } from '../core/frustum';
+import { VEHICLE_MODELS } from '../core/profile';
 import { clamp } from '../core/rotation';
 import type {
   FovSpec,
@@ -16,6 +17,7 @@ import type {
   SensorSpec,
   RangeMode,
   Vehicle,
+  VehicleModel,
   VehicleShape,
 } from '../core/types';
 
@@ -34,6 +36,7 @@ export const DEFAULT_VEHICLE: Vehicle = {
   wheelbase: 2.8,
   wheelRadius: 0.34,
   shape: 'box',
+  model: 'bus',
   cornerRadius: 0.3,
 };
 
@@ -91,6 +94,14 @@ export function sanitizeVehicle(raw: unknown): Vehicle {
     shape: SHAPES.includes(v.shape as VehicleShape)
       ? (v.shape as VehicleShape)
       : DEFAULT_VEHICLE.shape,
+    /**
+     * Same reasoning for the roofline: a file written before models existed was drawn as one
+     * block the whole length, which is what `bus` is. Falling back to anything else would change
+     * an old layout's geometry — and its occlusion warnings — the moment it was opened.
+     */
+    model: VEHICLE_MODELS.includes(v.model as VehicleModel)
+      ? (v.model as VehicleModel)
+      : DEFAULT_VEHICLE.model,
     cornerRadius: limited(v.cornerRadius, 'cornerRadius', DEFAULT_VEHICLE.cornerRadius),
   };
 }

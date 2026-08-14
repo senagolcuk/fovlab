@@ -8,6 +8,7 @@
  */
 
 import { cornerRadius } from './footprint';
+import { bodySegments } from './profile';
 import { clamp } from './rotation';
 import type { Vec3, Vehicle } from './types';
 
@@ -172,12 +173,54 @@ export function nearestSurfacePointRounded(p: Vec3, box: BodyBox, r: number): Su
   return { position: [p[0], p[1], zHigh], normal: [0, 0, 1], distance: Math.max(upGap, 0) };
 }
 
+/**
+ * The nearest point on the whole body, which is a stack of blocks rather than one box.
+ *
+ * Each block is solved on its own and the closest answer wins — except where that answer lies
+ * buried inside another block. Those are the faces where two blocks meet: real to each block
+ * alone, and not part of the body's surface at all. Without the test, dragging a sensor along a
+ * car's bonnet would snap it to the windscreen's hidden underside.
+ */
+export function nearestOnBody(p: Vec3, vehicle: Vehicle): SurfacePoint {
+  const r = cornerRadius(vehicle);
+  const boxes = bodySegments(vehicle).map((seg) => ({
+    min: [seg.minX, -vehicle.width / 2, vehicle.clearance] as Vec3,
+    max: [seg.maxX, vehicle.width / 2, seg.top] as Vec3,
+  }));
+
+  /** Strictly within some *other* block, by more than rounding. */
+  const buried = (q: Vec3, exclude: number): boolean =>
+    boxes.some(
+      (b, i) =>
+        i !== exclude &&
+        q[0] > b.min[0] + 1e-9 &&
+        q[0] < b.max[0] - 1e-9 &&
+        q[1] > b.min[1] + 1e-9 &&
+        q[1] < b.max[1] - 1e-9 &&
+        q[2] > b.min[2] + 1e-9 &&
+        q[2] < b.max[2] - 1e-9,
+    );
+
+  let best: SurfacePoint | null = null;
+  let fallback: SurfacePoint | null = null;
+
+  for (let i = 0; i < boxes.length; i++) {
+    const hit = nearestSurfacePointRounded(p, boxes[i], r);
+    if (!fallback || hit.distance < fallback.distance) fallback = hit;
+    if (buried(hit.position, i)) continue;
+    if (!best || hit.distance < best.distance) best = hit;
+  }
+
+  // Every candidate buried can only happen inside the body itself; the nearest is still the way out.
+  return best ?? fallback ?? nearestSurfacePointRounded(p, bodyBox(vehicle), r);
+}
+
 /** The snapped pose, or null when the point is further from the body than `tolerance`. */
 export function snapToBody(
   p: Vec3,
   vehicle: Vehicle,
   tolerance = SNAP_DISTANCE,
 ): SurfacePoint | null {
-  const hit = nearestSurfacePointRounded(p, bodyBox(vehicle), cornerRadius(vehicle));
+  const hit = nearestOnBody(p, vehicle);
   return hit.distance <= tolerance ? hit : null;
 }

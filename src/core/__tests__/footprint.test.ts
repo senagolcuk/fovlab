@@ -25,6 +25,7 @@ const base: Vehicle = {
   wheelbase: 2.8,
   wheelRadius: 0.34,
   shape: 'box',
+  model: 'bus',
   cornerRadius: 0.3,
 };
 

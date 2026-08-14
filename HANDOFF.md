@@ -130,7 +130,29 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     untouched. Rounding a corner genuinely removes it from the footprint, the blind gap and the
     body warning — the drawing and the numbers are never allowed to disagree.
 
-13. **The ISO fit projects the bounding box; it does not frame a bounding sphere, and it
+13. **A vehicle model is a roofline, and the maths reads it.** `Shape` is the plan outline;
+    `Model` is the side profile, and the two are independent. `core/profile.ts` gives the body as
+    a short stack of blocks along X — one for a bus, two for a van, three for a car — each
+    spanning the full footprint and rising to its own height, in proportions of the dimensions
+    the engineer typed rather than in metres.
+
+    It would have been half the work to make this a drawing-only change, and that is the version
+    to refuse. The occlusion warning and the snap both read `bodySegments`, so a camera above a
+    car's bonnet is in clear air and a sensor dropped there lands on the bonnet rather than at
+    roof height. Same rule as the shapes below: the drawing and the numbers never disagree.
+
+    Two things in `nearestOnBody` look redundant and are not. Each block is solved on its own,
+    and a candidate that lands buried inside *another* block is thrown away — those are the faces
+    where two blocks meet, real to each block alone and no part of the body's surface. Without
+    that test a drag along a bonnet snaps to the windscreen's hidden underside. And when every
+    candidate is buried, which only happens inside the body itself, the nearest is still the way
+    out, so there is a fallback rather than a null.
+
+    `bus` is the fallback for a layout written before models existed, not `car`: a bus is one
+    block the whole length, which is exactly what those files were drawn as. Anything else would
+    change an old layout's geometry, and its warnings, the moment it was opened.
+
+14. **The ISO fit projects the bounding box; it does not frame a bounding sphere, and it
     iterates.** A sphere around a wide flat layout is far bigger than what the pane shows, and it
     left the drawing covering 43% of the pane and off to one side. The fit now solves for the
     smallest distance that keeps every corner inside the frustum, which is closed form: a point
@@ -143,20 +165,20 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     13% of the pane height on a layout with any depth to it. Three passes measure the error in the
     projection itself and take it out. Do not collapse it back to one.
 
-14. **Dimension lines are an SVG overlay, not 3D text.** The numbers have to be Roboto Mono at a
+15. **Dimension lines are an SVG overlay, not 3D text.** The numbers have to be Roboto Mono at a
     fixed size, and a text mesh would scale with the zoom and change face. The overlay projects
     through `orthoWorldToPane`, the same tested function the panes use, so it cannot drift from the
     drawing. It clips to its own pane and pulls a dimension back inside when a fitted view leaves no
     room, rather than spilling into the neighbour.
 
-15. **User models live under their own localStorage key *and* are embedded in an exported layout.**
+16. **User models live under their own localStorage key *and* are embedded in an exported layout.**
     `effectiveSpec` falls back to 90°×60° 10 m for an unknown spec id, silently. Without the models
     in the file, the same layout would draw different geometry on another machine with no warning.
     On import the local copy wins on an id clash, so re-opening an old export cannot revert a figure
     since corrected. Deleting a model freezes its numbers into the instances that used it rather
     than letting them fall through to the default.
 
-16. **The merged FOV paints through the stencil buffer, not a mesh boolean and not the depth
+17. **The merged FOV paints through the stencil buffer, not a mesh boolean and not the depth
     buffer.** `Display > Merge overlaps` puts every visible volume — and, when the ground clip is
     on, every footprint — into one geometry, then draws it twice: a mask pass marks each covered
     pixel in the stencil, and a colour pass paints only where the mark still stands and clears it
@@ -196,7 +218,7 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     Nothing about the geometry changes — this is shading only, and every range, area and coverage
     number is untouched.
 
-17. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
+18. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
     nothing geometric reads the field — it only ever labels.
 
 ---
