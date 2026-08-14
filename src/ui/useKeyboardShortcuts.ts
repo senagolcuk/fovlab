@@ -51,6 +51,7 @@ export function useKeyboardShortcuts() {
           break;
         case 'Escape':
           if (store.pendingDeleteId) store.cancelPendingDelete();
+          else if (store.maximizedView) store.restoreLayout();
           else if (store.dragMode !== 'off') store.setDragMode('off');
           else store.select(null);
           break;

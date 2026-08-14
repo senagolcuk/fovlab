@@ -131,6 +131,9 @@ export interface AppState {
   blindReportStale: boolean;
 
   views: ViewsState;
+  /** The pane filling the whole viewport area, or null for the usual four-up tiling. */
+  maximizedView: ViewName | null;
+
   /** True while the ISO gizmo owns the pointer, so the pane must not also orbit. */
   gizmoDragging: boolean;
   /** Bumped to ask the stage — which is the only thing that knows the pane sizes — to refit. */
@@ -180,6 +183,8 @@ export interface AppState {
   setOrthoView(name: 'TOP' | 'FRONT' | 'LEFT', patch: Partial<OrthoViewState>): void;
   setIsoView(patch: Partial<IsoViewState>): void;
   setViews(views: ViewsState): void;
+  toggleMaximized(name: ViewName): void;
+  restoreLayout(): void;
   requestFit(): void;
 }
 
@@ -304,6 +309,7 @@ export const useStore = create<AppState>()((set, get) => ({
   blindReport: null,
   blindReportStale: true,
   views: DEFAULT_VIEWS,
+  maximizedView: null,
   gizmoDragging: false,
   fitNonce: 0,
   pendingDeleteId: null,
@@ -513,6 +519,14 @@ export const useStore = create<AppState>()((set, get) => ({
 
   setViews(views) {
     set({ views });
+  },
+
+  toggleMaximized(name) {
+    set((s) => ({ maximizedView: s.maximizedView === name ? null : name }));
+  },
+
+  restoreLayout() {
+    set({ maximizedView: null });
   },
 
   requestFit() {

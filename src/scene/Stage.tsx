@@ -12,6 +12,10 @@ import { View } from '@react-three/drei';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
+import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import type { Rect } from '../core/types';
 import { useStore, type ViewsState } from '../store/useStore';
 import { IsoCamera, OrthoCamera } from './Cameras';
@@ -88,6 +92,40 @@ function PaneLabel({ name, rect }: { name: ViewName; rect: Rect }) {
 }
 
 /** Publishes this pane's scene and camera, so the vector exporter can redraw it as shapes. */
+/**
+ * Maximise / restore, in the pane's top-right corner.
+ *
+ * Sits above the canvas with the labels, for the same reason they do: the canvas is opaque. It
+ * takes the pointer back, so a press on it is not also a pan on the pane underneath.
+ */
+function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
+  const maximized = useStore((s) => s.maximizedView === name);
+  const toggleMaximized = useStore((s) => s.toggleMaximized);
+
+  return (
+    <Tooltip title={maximized ? 'Back to four views  (Esc)' : `Fill the viewport with ${name}`}>
+      <IconButton
+        size="small"
+        onClick={() => toggleMaximized(name)}
+        sx={{
+          position: 'absolute',
+          left: rect.x + rect.width - 34,
+          top: rect.y + 4,
+          color: 'secondary.main',
+          bgcolor: 'rgba(255,255,255,0.72)',
+          '&:hover': { bgcolor: 'rgba(255,255,255,0.95)' },
+        }}
+      >
+        {maximized ? (
+          <CloseFullscreenIcon sx={{ fontSize: 15 }} />
+        ) : (
+          <OpenInFullIcon sx={{ fontSize: 15 }} />
+        )}
+      </IconButton>
+    </Tooltip>
+  );
+}
+
 function PaneRegister({ name }: { name: ViewName }) {
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -154,7 +192,11 @@ export default function Stage() {
     return () => observer.disconnect();
   }, []);
 
-  const rects = useMemo(() => viewportRects(size.width, size.height), [size.width, size.height]);
+  const maximizedView = useStore((s) => s.maximizedView);
+  const rects = useMemo(
+    () => viewportRects(size.width, size.height, maximizedView),
+    [size.width, size.height, maximizedView],
+  );
 
   const fitPanes = useCallback(
     (only?: ViewName) => {
@@ -165,9 +207,12 @@ export default function Stage() {
 
       for (const name of VIEW_NAMES) {
         if (only && name !== only) continue;
+        // The maximised pane is a different size from the tiled one, and a fit has to frame the
+        // pane that is actually on screen.
         const rect = viewportRects(
           hostRef.current?.clientWidth ?? 0,
           hostRef.current?.clientHeight ?? 0,
+          useStore.getState().maximizedView,
         )[name];
         if (name === 'ISO') {
           next.ISO = fitIso(current.ISO, points, rect.width, rect.height) ?? current.ISO;
@@ -201,9 +246,11 @@ export default function Stage() {
       sx={{ position: 'absolute', inset: 0, bgcolor: BACKGROUND, overflow: 'hidden' }}
     >
       {size.width > 0 &&
-        VIEW_NAMES.map((name, i) => (
-          <Pane key={name} name={name} index={i + 1} rect={rects[name]} onFit={onFitPane} />
-        ))}
+        VIEW_NAMES.map((name, i) =>
+          rects[name].width > 0 ? (
+            <Pane key={name} name={name} index={i + 1} rect={rects[name]} onFit={onFitPane} />
+          ) : null,
+        )}
 
       <Canvas
         eventSource={hostRef as never}
@@ -230,7 +277,7 @@ export default function Stage() {
       </Canvas>
 
       {/* The canvas is opaque, so the pane separators have to sit above it. */}
-      {size.width > 0 && (
+      {size.width > 0 && !maximizedView && (
         <>
           <Box
             sx={{
@@ -259,12 +306,19 @@ export default function Stage() {
 
       {/* Above the canvas for the same reason the separators are: the canvas is opaque. */}
       {size.width > 0 &&
-        (['TOP', 'FRONT', 'LEFT'] as OrthoName[]).map((name) => (
-          <DimensionOverlay key={name} name={name} rect={rects[name]} />
+        (['TOP', 'FRONT', 'LEFT'] as OrthoName[])
+          .filter((name) => rects[name].width > 0)
+          .map((name) => <DimensionOverlay key={name} name={name} rect={rects[name]} />)}
+
+      {size.width > 0 &&
+        VIEW_NAMES.filter((name) => rects[name].width > 0).map((name) => (
+          <PaneLabel key={name} name={name} rect={rects[name]} />
         ))}
 
       {size.width > 0 &&
-        VIEW_NAMES.map((name) => <PaneLabel key={name} name={name} rect={rects[name]} />)}
+        VIEW_NAMES.filter((name) => rects[name].width > 0).map((name) => (
+          <PaneZoomButton key={name} name={name} rect={rects[name]} />
+        ))}
     </Box>
   );
 }

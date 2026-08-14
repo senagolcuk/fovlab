@@ -292,27 +292,33 @@ so open it and click `Add sensor`.
 3. `Link zoom` on: scrolling in one pane scales all four by the same factor. Off: only that pane.
    Panning is always per-pane, in both modes.
 4. Drag in ISO to orbit; elevation stops at ±83°. Shift+drag pans instead.
-5. Double-click a pane fits that pane only. `Fit all views` fits all four — a long-range sensor must
+5. The button in a pane's top-right corner fills the viewport area with that pane; pressing it
+   again, or `Esc`, brings the four back. The zoom is deliberately left alone, so the drawing
+   stays exactly the size it was and there is simply more of it on screen — `F` or a double-click
+   fits it to the larger pane when that is what you want. `core/viewport.ts` still hands back a
+   rect per view when one is maximised; the other three come back empty, and an empty rect is the
+   signal not to mount that pane.
+6. Double-click a pane fits that pane only. `Fit all views` fits all four — a long-range sensor must
    never be clipped.
-6. Check the pane labels: `TOP` should read nose-up with the vehicle's right on screen right;
+7. Check the pane labels: `TOP` should read nose-up with the vehicle's right on screen right;
    `FRONT` looks aft with the vehicle's left on screen right; `LEFT` has the nose pointing screen
    left. Each label shows its scale in metres.
 
 **Geometry checkpoint** (from `05-build-plan.md`, worth repeating by eye)
 
-7. Place a sensor at `z = 2`, `pitch = -90`, `90° × 90°`. The ground square in TOP must measure
+8. Place a sensor at `z = 2`, `pitch = -90`, `90° × 90°`. The ground square in TOP must measure
    exactly 4 m × 4 m against the 1 m grid — leave `Display > Cell size` at its 1 m default for this
    check, or the squares you are counting are not metres. If it does not, stop and fix the maths
    before anything else.
 
 **Vehicle**
 
-8. Switch `Shape` between Box, Rounded and Cylinder. The body redraws, and the blind-sector shading
+9. Switch `Shape` between Box, Rounded and Cylinder. The body redraws, and the blind-sector shading
    in TOP follows the outline — a cylinder gives a circular ring, not a rectangular one. Only the
    vertical edges round; the roof stays flat.
-9. With Rounded selected, raise `Corner radius` past half the shorter side. The field warns and the
+10. With Rounded selected, raise `Corner radius` past half the shorter side. The field warns and the
    geometry clamps.
-10. Turn `Dimensions` on. Each orthographic pane shows the figures it can measure. Zoom out far —
+10a. Turn `Dimensions` on. Each orthographic pane shows the figures it can measure. Zoom out far —
     dimensions disappear rather than colliding, and none ever draws over a neighbouring pane.
 11. Turn `Vehicle` off. The body and wheels go, the sensors stay, and the `Wheels` toggle greys out.
 

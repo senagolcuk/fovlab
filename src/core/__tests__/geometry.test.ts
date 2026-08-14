@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { applyMat3, multiplyMat3, rotationMatrix, transpose } from '../rotation';
 import { frustum } from '../frustum';
 import { groundPolygon, polygonArea, polygonExtents } from '../ground';
-import { viewportRects, VIEW_NAMES } from '../viewport';
+import { EMPTY_RECT, viewportRects, VIEW_NAMES } from '../viewport';
 import type { Pose, Vec3 } from '../types';
 
 const TOL = 1e-4;
@@ -135,5 +135,25 @@ describe('acceptance', () => {
 
     // No gap: with no overlap, matching total area means the union is exactly the canvas.
     expect(list.reduce((s, r) => s + r.width * r.height, 0)).toBe(W * H);
+  });
+
+  it('10b — a maximised pane takes the whole canvas and the rest come back empty', () => {
+    const W = 1601;
+    const H = 901;
+
+    for (const name of VIEW_NAMES) {
+      const rects = viewportRects(W, H, name);
+      expect(rects[name]).toEqual({ x: 0, y: 0, width: W, height: H });
+      for (const other of VIEW_NAMES) {
+        if (other === name) continue;
+        expect(rects[other]).toEqual(EMPTY_RECT);
+      }
+      // Still exactly the canvas, so nothing is drawn twice or left blank.
+      expect(VIEW_NAMES.reduce((sum, n) => sum + rects[n].width * rects[n].height, 0)).toBe(W * H);
+    }
+  });
+
+  it('10c — no maximised pane is the tiling it always was', () => {
+    expect(viewportRects(1601, 901, null)).toEqual(viewportRects(1601, 901));
   });
 });
