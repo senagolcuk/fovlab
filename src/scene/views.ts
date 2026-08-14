@@ -20,8 +20,22 @@ export type OrthoName = 'TOP' | 'FRONT' | 'LEFT';
 /** Far enough that nothing in a plausible layout falls outside the ortho depth range. */
 export const ORTHO_DISTANCE = 500;
 export const ISO_FOV = 36;
-/** Room left around the bounding box when fitting. */
+/**
+ * Room left around the bounding box when fitting.
+ *
+ * TOP and LEFT keep the wider margin: TOP is the pane sensors are dragged in, and both are read
+ * against the grid, so a layout pinned to the frame is harder to work in. FRONT and ISO are
+ * looked at rather than worked in, and there the breathing room only made everything small.
+ */
 export const FIT_MARGIN = 1.14;
+export const FIT_MARGIN_TIGHT = 1.02;
+
+export const PANE_FIT_MARGIN: Record<ViewName, number> = {
+  TOP: FIT_MARGIN,
+  LEFT: FIT_MARGIN,
+  FRONT: FIT_MARGIN_TIGHT,
+  ISO: FIT_MARGIN_TIGHT,
+};
 
 export interface OrthoDef {
   /** Screen-right, screen-up and the direction from the target to the camera, in world space. */
@@ -212,6 +226,15 @@ export function fitOrtho(
   points: Vec3[],
   paneWidth: number,
   paneHeight: number,
+  margin = FIT_MARGIN,
+  /**
+   * Pulled towards this point once the zoom is settled, as far as it can go without letting
+   * anything leave the pane. Framing the bounding box alone centres the *extent*, and a layout
+   * whose coverage all points one way then pushes the vehicle against a border — in LEFT, with
+   * every sensor looking forward, it ends up hard against the right edge. Nothing is ever
+   * clipped to achieve this: it only spends slack the fit had already left over.
+   */
+  preferCentreOn?: Vec3,
 ): OrthoViewState | null {
   if (points.length === 0 || paneWidth <= 0 || paneHeight <= 0) return null;
 
@@ -229,13 +252,35 @@ export function fitOrtho(
     if (v > maxV) maxV = v;
   }
 
-  const spanU = Math.max(maxU - minU, 1e-3) * FIT_MARGIN;
-  const spanV = Math.max(maxV - minV, 1e-3) * FIT_MARGIN;
+  const spanU = Math.max(maxU - minU, 1e-3) * margin;
+  const spanV = Math.max(maxV - minV, 1e-3) * margin;
+  const zoom = Math.min(paneWidth / spanU, paneHeight / spanV);
 
-  return {
-    zoom: Math.min(paneWidth / spanU, paneHeight / spanV),
-    pan: [(minU + maxU) / 2, (minV + maxV) / 2],
-  };
+  const pan: [number, number] = [(minU + maxU) / 2, (minV + maxV) / 2];
+
+  if (preferCentreOn) {
+    const wanted = panForPoint(def, preferCentreOn);
+    pan[0] = shiftToward(pan[0], wanted[0], paneWidth / (2 * zoom) - (maxU - minU) / 2);
+    pan[1] = shiftToward(pan[1], wanted[1], paneHeight / (2 * zoom) - (maxV - minV) / 2);
+  }
+
+  return { zoom, pan };
+}
+
+/**
+ * How much of the leftover room a shift may spend.
+ *
+ * Spending all of it puts the content flush against the frame on the far side, which is the very
+ * thing the fit margin exists to prevent. Half moves the body noticeably off the border and still
+ * leaves a gap all the way round.
+ */
+const SHIFT_BUDGET = 0.5;
+
+/** Moves `from` towards `towards`, by at most `slack` of the room the fit left over. */
+function shiftToward(from: number, towards: number, slack: number): number {
+  if (!(slack > 0)) return from;
+  const limit = slack * SHIFT_BUDGET;
+  return from + Math.max(-limit, Math.min(limit, towards - from));
 }
 
 export function fitIso(
@@ -243,8 +288,20 @@ export function fitIso(
   points: Vec3[],
   paneWidth: number,
   paneHeight: number,
+  margin = FIT_MARGIN_TIGHT,
 ): IsoViewState | null {
   if (points.length === 0 || paneWidth <= 0 || paneHeight <= 0) return null;
+
+  // The camera basis for the orbit it is already on: `n` points from the target to the camera.
+  const el = view.elevation * DEG;
+  const az = view.azimuth * DEG;
+  const n = new THREE.Vector3(
+    Math.cos(el) * Math.cos(az),
+    Math.cos(el) * Math.sin(az),
+    Math.sin(el),
+  );
+  const x = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 0, 1), n).normalize();
+  const y = new THREE.Vector3().crossVectors(n, x);
 
   const min: Vec3 = [Infinity, Infinity, Infinity];
   const max: Vec3 = [-Infinity, -Infinity, -Infinity];
@@ -254,18 +311,79 @@ export function fitIso(
       if (p[i] > max[i]) max[i] = p[i];
     }
   }
-  const target: Vec3 = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+  const boxCentre = new THREE.Vector3(
+    (min[0] + max[0]) / 2,
+    (min[1] + max[1]) / 2,
+    (min[2] + max[2]) / 2,
+  );
 
-  let radius = 0;
-  for (const p of points) {
-    const d = Math.hypot(p[0] - target[0], p[1] - target[1], p[2] - target[2]);
-    if (d > radius) radius = d;
+  /**
+   * Projected extents, not a bounding sphere.
+   *
+   * A sphere around a wide flat layout is far larger than what is actually on screen, so the fit
+   * used to pull back until the drawing filled under half the pane, off to one side. Projecting
+   * onto the camera's own axes measures what the pane will really show.
+   */
+  const tanV = Math.tan((ISO_FOV / 2) * DEG) / margin;
+  const tanH = tanV * (paneWidth / paneHeight);
+
+  /**
+   * A point sits inside the frustum when its offset across the view is within its depth times
+   * the half-angle. Depth is `distance − along`, so each point sets a lower bound on the
+   * distance and the largest of them is the fit.
+   */
+  const distanceFor = (t: THREE.Vector3): number => {
+    let needed = 0;
+    for (const p of points) {
+      const d = new THREE.Vector3(p[0], p[1], p[2]).sub(t);
+      const along = d.dot(n);
+      const want = along + Math.max(Math.abs(d.dot(x)) / tanH, Math.abs(d.dot(y)) / tanV);
+      if (want > needed) needed = want;
+    }
+    return Math.max(needed, 0.5);
+  };
+
+  /**
+   * Centring has to be iterated, not solved once.
+   *
+   * Sliding the target across the view centres the *angles*, but the pane shows a perspective
+   * projection: points nearer the camera swing further for the same offset, so the picture ends
+   * up off-centre anyway — 13% of the pane height on a layout with any depth to it. Each pass
+   * measures the error where it actually matters, in the projection, and takes it out. Three is
+   * comfortably enough to land inside a pixel.
+   */
+  let target = boxCentre.clone();
+  let distance = distanceFor(target);
+
+  for (let pass = 0; pass < 3; pass++) {
+    const camera = target.clone().addScaledVector(n, distance);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (const p of points) {
+      const v = new THREE.Vector3(p[0], p[1], p[2]).sub(camera);
+      const depth = -v.dot(n);
+      if (depth <= 1e-6) continue;
+      const ndcX = v.dot(x) / (depth * tanH);
+      const ndcY = v.dot(y) / (depth * tanV);
+      if (ndcX < minX) minX = ndcX;
+      if (ndcX > maxX) maxX = ndcX;
+      if (ndcY < minY) minY = ndcY;
+      if (ndcY > maxY) maxY = ndcY;
+    }
+    if (!Number.isFinite(minX) || !Number.isFinite(minY)) break;
+
+    target
+      .addScaledVector(x, ((minX + maxX) / 2) * tanH * distance)
+      .addScaledVector(y, ((minY + maxY) / 2) * tanV * distance);
+    distance = distanceFor(target);
   }
-  radius = Math.max(radius, 0.5);
 
-  const vHalf = (ISO_FOV / 2) * DEG;
-  const hHalf = Math.atan(Math.tan(vHalf) * (paneWidth / paneHeight));
-  const distance = (radius / Math.sin(Math.min(vHalf, hHalf))) * FIT_MARGIN;
-
-  return { ...view, target, distance };
+  return {
+    ...view,
+    target: [target.x, target.y, target.z],
+    distance,
+  };
 }

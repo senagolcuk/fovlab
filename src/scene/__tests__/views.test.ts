@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import type { SensorInstance, Vec3, Vehicle } from '../../core/types';
 import {
-  ISO_FOV,
+  FIT_MARGIN,
+  FIT_MARGIN_TIGHT,
   ORTHO_DEFS,
   fitIso,
   fitOrtho,
@@ -108,34 +109,121 @@ describe('fitOrtho', () => {
 
 describe('fitIso', () => {
   const view = { azimuth: 35, elevation: 24, distance: 14, target: [0, 0, 0] as Vec3 };
+  const W = 620;
+  const H = 382;
 
-  it('targets the bounding box centre', () => {
-    const fit = fitIso(view, [
-      [0, 0, 0],
-      [10, 4, 2],
-    ], 600, 400)!;
-    expect(fit.target).toEqual([5, 2, 1]);
+  function corners(min: Vec3, max: Vec3): Vec3[] {
+    const out: Vec3[] = [];
+    for (const x of [min[0], max[0]])
+      for (const y of [min[1], max[1]]) for (const z of [min[2], max[2]]) out.push([x, y, z]);
+    return out;
+  }
+
+  const wideFlat = corners([-3, -14, 0], [16, 14, 2.4]);
+
+  it('keeps every point inside the pane', () => {
+    const fit = fitIso(view, wideFlat, W, H)!;
+    for (const p of wideFlat) {
+      const q = projectToIsoPane(p, fit, W, H);
+      expect(q).not.toBeNull();
+      expect(q!.x).toBeGreaterThanOrEqual(-0.5);
+      expect(q!.x).toBeLessThanOrEqual(W + 0.5);
+      expect(q!.y).toBeGreaterThanOrEqual(-0.5);
+      expect(q!.y).toBeLessThanOrEqual(H + 0.5);
+    }
   });
 
-  it('pulls back far enough that the bounding sphere fits the narrower angle', () => {
-    const points: Vec3[] = [
-      [-10, -10, -10],
-      [10, 10, 10],
-    ];
-    const fit = fitIso(view, points, 400, 400)!;
-    const radius = Math.hypot(10, 10, 10);
-    const half = ((ISO_FOV / 2) * Math.PI) / 180;
-    expect(fit.distance).toBeCloseTo((radius / Math.sin(half)) * 1.14, 6);
+  it('fills the pane rather than framing a bounding sphere', () => {
+    /**
+     * The sphere fit this replaced left this layout covering 43% of the pane. It cannot reach
+     * 100%: the distance is set by whichever point is hardest to hold, and points nearer the
+     * camera than that one project shorter, so a little is always given away to perspective.
+     */
+    const fit = fitIso(view, wideFlat, W, H)!;
+    const ps = wideFlat.map((p) => projectToIsoPane(p, fit, W, H)!);
+    const spanX = Math.max(...ps.map((q) => q.x)) - Math.min(...ps.map((q) => q.x));
+    const spanY = Math.max(...ps.map((q) => q.y)) - Math.min(...ps.map((q) => q.y));
+    expect(Math.max(spanX / W, spanY / H)).toBeGreaterThan(0.8);
   });
 
-  it('needs more distance in a wide pane than a square one', () => {
-    const points: Vec3[] = [
-      [-5, -5, -5],
-      [5, 5, 5],
-    ];
-    expect(fitIso(view, points, 400, 400)!.distance).toBeLessThanOrEqual(
-      fitIso(view, points, 800, 400)!.distance,
-    );
+  it('centres what it framed', () => {
+    // Exact at the target's own depth; a pixel or two out once the rest of the box is projected.
+    const fit = fitIso(view, wideFlat, W, H)!;
+    const ps = wideFlat.map((p) => projectToIsoPane(p, fit, W, H)!);
+    const midX = (Math.max(...ps.map((q) => q.x)) + Math.min(...ps.map((q) => q.x))) / 2;
+    const midY = (Math.max(...ps.map((q) => q.y)) + Math.min(...ps.map((q) => q.y))) / 2;
+    expect(Math.abs(midX - W / 2)).toBeLessThan(W * 0.01);
+    expect(Math.abs(midY - H / 2)).toBeLessThan(H * 0.01);
+  });
+
+  it('leaves the orbit angles alone — a fit is a framing, not a camera move', () => {
+    const fit = fitIso(view, wideFlat, W, H)!;
+    expect(fit.azimuth).toBe(view.azimuth);
+    expect(fit.elevation).toBe(view.elevation);
+  });
+
+  it('pulls back further for a bigger layout', () => {
+    const small = fitIso(view, corners([-2, -2, 0], [2, 2, 1]), W, H)!;
+    const large = fitIso(view, corners([-20, -20, 0], [20, 20, 10]), W, H)!;
+    expect(large.distance).toBeGreaterThan(small.distance);
+  });
+
+  it('returns null when there is nothing to frame', () => {
+    expect(fitIso(view, [], W, H)).toBeNull();
+    expect(fitIso(view, wideFlat, 0, H)).toBeNull();
+  });
+});
+
+describe('fitOrtho biased towards the vehicle', () => {
+  // Coverage all forward, so the body sits at one end of the content.
+  const forward: Vec3[] = [
+    [-2.4, -0.95, 0],
+    [-2.4, 0.95, 1.7],
+    [2.4, -0.95, 0],
+    [2.4, 0.95, 1.7],
+    [16, -8, 0],
+    [16, 8, 0],
+  ];
+  const centre: Vec3 = [0, 0, 0.95];
+
+  it('moves the body towards the middle', () => {
+    const plain = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382)!;
+    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
+    const before = orthoWorldToPane(centre, ORTHO_DEFS.LEFT, plain, 620, 382);
+    const after = orthoWorldToPane(centre, ORTHO_DEFS.LEFT, biased, 620, 382);
+    expect(Math.abs(after.x - 310)).toBeLessThan(Math.abs(before.x - 310));
+  });
+
+  it('never clips: every point stays inside the pane', () => {
+    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
+    for (const p of forward) {
+      const q = orthoWorldToPane(p, ORTHO_DEFS.LEFT, biased, 620, 382);
+      expect(q.x).toBeGreaterThanOrEqual(0);
+      expect(q.x).toBeLessThanOrEqual(620);
+      expect(q.y).toBeGreaterThanOrEqual(0);
+      expect(q.y).toBeLessThanOrEqual(382);
+    }
+  });
+
+  it('leaves a gap all round rather than pinning content to the frame', () => {
+    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
+    const ps = forward.map((p) => orthoWorldToPane(p, ORTHO_DEFS.LEFT, biased, 620, 382));
+    expect(Math.min(...ps.map((q) => q.x))).toBeGreaterThan(0);
+    expect(Math.max(...ps.map((q) => q.x))).toBeLessThan(620);
+    expect(Math.min(...ps.map((q) => q.y))).toBeGreaterThan(0);
+    expect(Math.max(...ps.map((q) => q.y))).toBeLessThan(382);
+  });
+
+  it('leaves the zoom alone — only the framing shifts', () => {
+    const plain = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382)!;
+    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
+    expect(biased.zoom).toBe(plain.zoom);
+  });
+
+  it('a tighter margin fills more of the pane', () => {
+    const loose = fitOrtho(ORTHO_DEFS.FRONT, forward, 620, 382, FIT_MARGIN)!;
+    const tight = fitOrtho(ORTHO_DEFS.FRONT, forward, 620, 382, FIT_MARGIN_TIGHT)!;
+    expect(tight.zoom).toBeGreaterThan(loose.zoom);
   });
 });
 

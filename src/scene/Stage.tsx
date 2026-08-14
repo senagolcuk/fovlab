@@ -41,6 +41,7 @@ import { registerPaneScene, setSceneHandle } from './exportBridge';
 import {
   AXIS_HINTS,
   ORTHO_DEFS,
+  PANE_FIT_MARGIN,
   fitIso,
   fitOrtho,
   panForPoint,
@@ -238,10 +239,20 @@ export default function Stage() {
           useStore.getState().maximizedView,
         )[name];
         if (name === 'ISO') {
-          next.ISO = fitIso(current.ISO, points, rect.width, rect.height) ?? current.ISO;
+          next.ISO =
+            fitIso(current.ISO, points, rect.width, rect.height, PANE_FIT_MARGIN.ISO) ??
+            current.ISO;
         } else {
           next[name] =
-            fitOrtho(ORTHO_DEFS[name], points, rect.width, rect.height) ?? current[name];
+            fitOrtho(
+              ORTHO_DEFS[name],
+              points,
+              rect.width,
+              rect.height,
+              PANE_FIT_MARGIN[name],
+              // Keeps the body off the border when every sensor points one way.
+              vehicleCentre(state.vehicle),
+            ) ?? current[name];
         }
       }
       state.setViews(next);

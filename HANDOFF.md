@@ -130,20 +130,33 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     untouched. Rounding a corner genuinely removes it from the footprint, the blind gap and the
     body warning — the drawing and the numbers are never allowed to disagree.
 
-13. **Dimension lines are an SVG overlay, not 3D text.** The numbers have to be Roboto Mono at a
+13. **The ISO fit projects the bounding box; it does not frame a bounding sphere, and it
+    iterates.** A sphere around a wide flat layout is far bigger than what the pane shows, and it
+    left the drawing covering 43% of the pane and off to one side. The fit now solves for the
+    smallest distance that keeps every corner inside the frustum, which is closed form: a point
+    is inside when its offset across the view is within its depth times the half-angle, and depth
+    is `distance − along`, so each point sets a lower bound and the largest one wins.
+
+    Centring is the part that looks like it should be closed form and is not. Sliding the target
+    across the view centres the *angles*, but the pane shows a perspective projection, so points
+    nearer the camera swing further for the same offset and the picture still lands off-centre —
+    13% of the pane height on a layout with any depth to it. Three passes measure the error in the
+    projection itself and take it out. Do not collapse it back to one.
+
+14. **Dimension lines are an SVG overlay, not 3D text.** The numbers have to be Roboto Mono at a
     fixed size, and a text mesh would scale with the zoom and change face. The overlay projects
     through `orthoWorldToPane`, the same tested function the panes use, so it cannot drift from the
     drawing. It clips to its own pane and pulls a dimension back inside when a fitted view leaves no
     room, rather than spilling into the neighbour.
 
-14. **User models live under their own localStorage key *and* are embedded in an exported layout.**
+15. **User models live under their own localStorage key *and* are embedded in an exported layout.**
     `effectiveSpec` falls back to 90°×60° 10 m for an unknown spec id, silently. Without the models
     in the file, the same layout would draw different geometry on another machine with no warning.
     On import the local copy wins on an id clash, so re-opening an old export cannot revert a figure
     since corrected. Deleting a model freezes its numbers into the instances that used it rather
     than letting them fall through to the default.
 
-15. **The merged FOV paints through the stencil buffer, not a mesh boolean and not the depth
+16. **The merged FOV paints through the stencil buffer, not a mesh boolean and not the depth
     buffer.** `Display > Merge overlaps` puts every visible volume — and, when the ground clip is
     on, every footprint — into one geometry, then draws it twice: a mask pass marks each covered
     pixel in the stencil, and a colour pass paints only where the mark still stands and clears it
@@ -183,7 +196,7 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     Nothing about the geometry changes — this is shading only, and every range, area and coverage
     number is untouched.
 
-16. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
+17. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
     nothing geometric reads the field — it only ever labels.
 
 ---
@@ -302,7 +315,13 @@ so open it and click `Add sensor`.
    back a rect per view when one is maximised; the other three come back empty, and an empty rect
    is the signal not to mount that pane.
 6. Double-click a pane fits that pane only. `Fit all views` fits all four — a long-range sensor must
-   never be clipped.
+   never be clipped. Measured on a forward-looking layout, a fit should leave FRONT and ISO
+   filling about 98% of their pane's binding dimension and TOP and LEFT about 88%: those two keep
+   the wider margin because they are read against the grid and TOP is where sensors are dragged.
+   The fit also pulls the framing towards the vehicle, so a layout whose coverage all points one
+   way does not push the body against a border. In LEFT it can only go so far — with every sensor
+   looking forward the body genuinely sits at one end of the content, and cropping the coverage to
+   centre it is not something a fit may do.
 7. Check the pane labels: `TOP` should read nose-up with the vehicle's right on screen right;
    `FRONT` looks aft with the vehicle's left on screen right; `LEFT` has the nose pointing screen
    left. Each label shows its scale in metres.
