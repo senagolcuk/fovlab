@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { clipPolygonToX, footprintPolygon } from '../core/footprint';
-import { bodySegments } from '../core/profile';
+import { roundedRectPolygon } from '../core/footprint';
+import { blockInnerExtents, bodyBlocks } from '../core/profile';
 import type { Vehicle } from '../core/types';
 
 const TYRE_WIDTH = 0.22;
@@ -30,16 +30,16 @@ export default function VehicleBody({
   const { width, clearance, wheelbase, wheelRadius } = vehicle;
 
   const blocks = useMemo(() => {
-    const outline = footprintPolygon(vehicle);
     const built: THREE.BufferGeometry[] = [];
 
-    for (const seg of bodySegments(vehicle)) {
-      const plan = clipPolygonToX(outline, seg.minX, seg.maxX);
-      if (plan.length < 3) continue;
-      const height = seg.top - clearance;
+    for (const block of bodyBlocks(vehicle)) {
+      const height = block.top - clearance;
       if (height <= 0) continue;
+      const { minX, maxX, halfWidth, r } = blockInnerExtents(block, vehicle);
+      const plan = roundedRectPolygon(minX, maxX, halfWidth, r);
+      if (plan.length < 3) continue;
 
-      const shape = new THREE.Shape(plan.map(([x, y]) => new THREE.Vector2(x, y)));
+      const shape = new THREE.Shape(plan.map(([x, y]: [number, number]) => new THREE.Vector2(x, y)));
       const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
       // Extrusion runs along +Z from z = 0, so the block starts at the ground clearance.
       g.translate(0, 0, clearance);

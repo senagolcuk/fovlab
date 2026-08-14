@@ -3,16 +3,24 @@
  *
  * The plan outline is `footprint.ts` and is the same for every model — a car and a bus of the
  * same dimensions take up the same ground. What a model changes is the roofline, so the body is
- * a short stack of blocks along X, each spanning the full footprint and rising to its own height.
+ * a base block running the whole length with the taller sections stacked on top of it.
  *
- * This is not decoration. The occlusion warning and the snap both read it, so a sensor dropped on
- * a car's bonnet lands on the bonnet rather than at roof height. The drawing and the numbers are
- * never allowed to disagree.
+ * Stacked rather than laid end to end, and that is the load-bearing choice. Side by side, a
+ * block in the middle has two cut ends and no corners to round, so a rounded car came out with a
+ * sharp-cornered cabin sitting on a rounded chassis. Stacked, the base carries the full outline —
+ * which is what the ground footprint, the blind gap and the sector exit radius all measure — and
+ * every block above it is a rounded rectangle in its own right.
+ *
+ * None of this is decoration. The occlusion warning and the snap read the same blocks the drawing
+ * does, so a sensor dropped on a car's bonnet lands on the bonnet rather than at roof height, and
+ * a rounded cabin is rounded to the snap as well as to the eye.
  */
 
-import type { Vehicle, VehicleModel } from './types';
+import { cornerRadius } from './footprint';
+import { clamp } from './rotation';
+import type { Vec2, Vec3, Vehicle, VehicleModel } from './types';
 
-export interface BodySegment {
+export interface BodyBlock {
   /** World X of the rear and front ends of this block. */
   minX: number;
   maxX: number;
@@ -45,26 +53,84 @@ const PROFILES: Record<VehicleModel, ReadonlyArray<readonly [number, number, num
 
 export const VEHICLE_MODELS: VehicleModel[] = ['car', 'van', 'bus'];
 
-export function bodySegments(vehicle: Vehicle): BodySegment[] {
+/**
+ * The body as blocks, lowest first.
+ *
+ * The first always spans the whole length, at the height of the lowest section — so whatever the
+ * model, the body meets the ground as the full footprint. The rest are the sections that stand
+ * above it.
+ */
+export function bodyBlocks(vehicle: Vehicle): BodyBlock[] {
   const nose = vehicle.length / 2;
-  const profile = PROFILES[vehicle.model] ?? PROFILES.bus;
-  return profile.map(([from, to, h]) => ({
-    minX: nose - to * vehicle.length,
-    maxX: nose - from * vehicle.length,
-    top: vehicle.clearance + h * vehicle.height,
-  }));
+  const sections = PROFILES[vehicle.model] ?? PROFILES.bus;
+  const base = Math.min(...sections.map(([, , h]) => h));
+
+  const blocks: BodyBlock[] = [
+    { minX: -nose, maxX: nose, top: vehicle.clearance + base * vehicle.height },
+  ];
+
+  for (const [from, to, h] of sections) {
+    if (h <= base) continue;
+    blocks.push({
+      minX: nose - to * vehicle.length,
+      maxX: nose - from * vehicle.length,
+      top: vehicle.clearance + h * vehicle.height,
+    });
+  }
+
+  return blocks;
+}
+
+/** The corner radius a block can carry: never more than half its own shorter side. */
+export function blockRadius(block: BodyBlock, vehicle: Vehicle): number {
+  const limit = Math.min(block.maxX - block.minX, vehicle.width) / 2;
+  return Math.min(cornerRadius(vehicle), limit);
+}
+
+/** Inner half-extents of the rectangle a block's corner discs sweep around. */
+export function blockInnerExtents(block: BodyBlock, vehicle: Vehicle): {
+  minX: number;
+  maxX: number;
+  halfWidth: number;
+  r: number;
+} {
+  const r = blockRadius(block, vehicle);
+  return {
+    minX: block.minX + r,
+    maxX: block.maxX - r,
+    halfWidth: Math.max(0, vehicle.width / 2 - r),
+    r,
+  };
+}
+
+/** Whether a plan point falls within a block's own rounded outline. */
+export function isInsideBlockPlan(p: Vec2, block: BodyBlock, vehicle: Vehicle): boolean {
+  const { minX, maxX, halfWidth, r } = blockInnerExtents(block, vehicle);
+  const dx = p[0] - clamp(p[0], minX, maxX);
+  const dy = p[1] - clamp(p[1], -halfWidth, halfWidth);
+  return Math.hypot(dx, dy) <= r + 1e-12;
+}
+
+/** Whether a point is within the body itself — any one of its blocks. */
+export function isInsideBodySolid(p: Vec3, vehicle: Vehicle): boolean {
+  return bodyBlocks(vehicle).some(
+    (block) =>
+      p[2] >= vehicle.clearance &&
+      p[2] <= block.top &&
+      isInsideBlockPlan([p[0], p[1]], block, vehicle),
+  );
 }
 
 /**
- * The roofline above `x`. Returns the clearance — a body of no height — beyond the ends.
+ * The roofline above `x`, ignoring how far off the centreline the point is.
  *
  * Blocks meet at a shared edge, so a point on a step belongs to the taller of the two: the step
  * face is part of the body, and a sensor on it should sit against the tall side.
  */
 export function bodyTopAt(x: number, vehicle: Vehicle): number {
   let top = vehicle.clearance;
-  for (const s of bodySegments(vehicle)) {
-    if (x >= s.minX && x <= s.maxX && s.top > top) top = s.top;
+  for (const b of bodyBlocks(vehicle)) {
+    if (x >= b.minX && x <= b.maxX && b.top > top) top = b.top;
   }
   return top;
 }

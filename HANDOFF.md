@@ -132,9 +132,17 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
 
 13. **A vehicle model is a roofline, and the maths reads it.** `Shape` is the plan outline;
     `Model` is the side profile, and the two are independent. `core/profile.ts` gives the body as
-    a short stack of blocks along X — one for a bus, two for a van, three for a car — each
-    spanning the full footprint and rising to its own height, in proportions of the dimensions
-    the engineer typed rather than in metres.
+    blocks: a base running the whole length at the height of the lowest section, with the taller
+    sections stacked on top. Proportions of the dimensions the engineer typed rather than metres.
+
+    Stacked, not laid end to end, and that is the load-bearing choice. Side by side, a block in
+    the middle has two cut ends and no corners to round, so a rounded car came out with a
+    sharp-cornered cabin sitting on a rounded chassis — and the snap, which had always rounded
+    each block's own ends, disagreed with the drawing. Stacked, the base carries the full outline,
+    which is what the ground footprint, the blind gap and the sector exit radius all measure, and
+    every block above it is a rounded rectangle in its own right. Each block's radius is clamped
+    to half its own shorter side, so a short bonnet cannot be swallowed by the figure a long body
+    can carry.
 
     It would have been half the work to make this a drawing-only change, and that is the version
     to refuse. The occlusion warning and the snap both read `bodySegments`, so a camera above a

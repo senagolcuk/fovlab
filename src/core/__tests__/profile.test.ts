@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { isInsideBody } from '../ground';
-import { VEHICLE_MODELS, bodyMaxTop, bodySegments, bodyTopAt } from '../profile';
+import {
+  VEHICLE_MODELS,
+  blockRadius,
+  bodyBlocks,
+  bodyMaxTop,
+  bodyTopAt,
+  isInsideBlockPlan,
+} from '../profile';
 import { SNAP_DISTANCE, nearestOnBody, snapToBody } from '../snap';
 import type { Pose, Vehicle, VehicleModel } from '../types';
 
@@ -22,23 +29,23 @@ function pose(p: Partial<Pose>): Pose {
   return { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, ...p };
 }
 
-describe('body segments', () => {
-  it('covers the whole length exactly, with no gap and no overlap, for every model', () => {
+describe('body blocks', () => {
+  it('starts with a base that runs the whole length, for every model', () => {
     for (const model of VEHICLE_MODELS) {
       const v = vehicle(model);
-      const segs = bodySegments(v).slice().sort((a, b) => a.minX - b.minX);
-      expect(segs[0].minX).toBeCloseTo(-v.length / 2, 9);
-      expect(segs[segs.length - 1].maxX).toBeCloseTo(v.length / 2, 9);
-      for (let i = 1; i < segs.length; i++) {
-        expect(segs[i].minX).toBeCloseTo(segs[i - 1].maxX, 9);
-      }
+      const [base] = bodyBlocks(v);
+      // Whatever the model, the body meets the ground as the full footprint — which is what the
+      // blind gap and the sector exit radius measure against.
+      expect(base.minX).toBeCloseTo(-v.length / 2, 9);
+      expect(base.maxX).toBeCloseTo(v.length / 2, 9);
+      for (const b of bodyBlocks(v)) expect(b.top).toBeGreaterThanOrEqual(base.top - 1e-9);
     }
   });
 
   it('never rises above the height the engineer typed, and reaches it somewhere', () => {
     for (const model of VEHICLE_MODELS) {
       const v = vehicle(model);
-      const tops = bodySegments(v).map((s) => s.top);
+      const tops = bodyBlocks(v).map((b) => b.top);
       expect(Math.max(...tops)).toBeCloseTo(bodyMaxTop(v), 9);
       for (const t of tops) expect(t).toBeLessThanOrEqual(bodyMaxTop(v) + 1e-9);
       for (const t of tops) expect(t).toBeGreaterThan(v.clearance);
@@ -47,7 +54,7 @@ describe('body segments', () => {
 
   it('leaves the bus one block, which is what the tool always drew', () => {
     const v = vehicle('bus');
-    const segs = bodySegments(v);
+    const segs = bodyBlocks(v);
     expect(segs).toHaveLength(1);
     expect(segs[0].top).toBeCloseTo(bodyMaxTop(v), 9);
     // The roofline is the full height at every point along it.
@@ -153,5 +160,56 @@ describe('snapping to a stepped body', () => {
     const hit = snapToBody([2.2, 1.0, 0.5], car)!;
     expect(hit.position[1]).toBeCloseTo(car.width / 2, 9);
     expect(hit.normal).toEqual([0, 1, 0]);
+  });
+});
+
+describe('a rounded body is rounded all the way up', () => {
+  function rounded(model: VehicleModel): Vehicle {
+    return { ...vehicle(model), shape: 'rounded', cornerRadius: 0.6 };
+  }
+
+  it('gives every block a radius, not just the one at ground level', () => {
+    for (const model of VEHICLE_MODELS) {
+      const v = rounded(model);
+      for (const b of bodyBlocks(v)) expect(blockRadius(b, v)).toBeGreaterThan(0);
+    }
+  });
+
+  it('never lets a block round more than half its own shorter side', () => {
+    // A short bonnet must not be given a radius that would swallow it.
+    const v = { ...rounded('van'), cornerRadius: 5 };
+    for (const b of bodyBlocks(v)) {
+      expect(blockRadius(b, v)).toBeLessThanOrEqual(Math.min(b.maxX - b.minX, v.width) / 2 + 1e-12);
+    }
+  });
+
+  it('cuts the corner off a cabin, not just off the chassis', () => {
+    const v = rounded('car');
+    const cabin = bodyBlocks(v).find((b) => b.top === bodyMaxTop(v))!;
+    const r = blockRadius(cabin, v);
+    // The very corner of the cabin's bounding box is outside its rounded outline.
+    expect(isInsideBlockPlan([cabin.maxX - 1e-6, v.width / 2 - 1e-6], cabin, v)).toBe(false);
+    // A point a radius in from both sides is inside it.
+    expect(isInsideBlockPlan([cabin.maxX - r, v.width / 2 - r], cabin, v)).toBe(true);
+  });
+
+  it('agrees with the snap: the drawing and the surface are the same outline', () => {
+    const v = rounded('car');
+    const cabin = bodyBlocks(v).find((b) => b.top === bodyMaxTop(v))!;
+    // Straight down onto the cut corner of the cabin's bounding box: the roof is not there, so
+    // the snap must find something else — never the roof height at a corner that was rounded off.
+    const hit = nearestOnBody([cabin.maxX, v.width / 2, cabin.top + 0.05], v);
+    expect(isInsideBody(pose({ x: hit.position[0], y: hit.position[1], z: hit.position[2] }), v))
+      .toBe(true);
+    expect(hit.position[2]).toBeLessThanOrEqual(cabin.top + 1e-9);
+  });
+
+  it('leaves the body meeting the ground as the full footprint', () => {
+    // The base block spans everything, so a corner of the plan outline is still body at low z.
+    const v = rounded('car');
+    const [base] = bodyBlocks(v);
+    const r = blockRadius(base, v);
+    expect(isInsideBlockPlan([v.length / 2 - r, v.width / 2 - r], base, v)).toBe(true);
+    expect(isInsideBody(pose({ x: v.length / 2 - r, y: 0, z: v.clearance + 0.05 }), v)).toBe(true);
   });
 });

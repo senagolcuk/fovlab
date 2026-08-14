@@ -7,7 +7,7 @@
  */
 
 import { footprintPolygon, isInsideFootprint } from './footprint';
-import { bodyTopAt } from './profile';
+import { isInsideBodySolid } from './profile';
 import type { Frustum, GroundCoverage, Pose, Vec2, Vec3, Vehicle } from './types';
 
 /** Two vertices closer than this collapse into one. */
@@ -173,12 +173,9 @@ export function blindGap(poly: Vec2[], vehicle: Vehicle): number {
 
 /** True when the sensor sits inside the vehicle body, which would occlude it. */
 export function isInsideBody(pose: Pose, vehicle: Vehicle): boolean {
-  return (
-    isInsideFootprint([pose.x, pose.y], vehicle) &&
-    pose.z >= vehicle.clearance &&
-    // The roofline, not the overall height: a camera above a car's bonnet is in clear air.
-    pose.z <= bodyTopAt(pose.x, vehicle)
-  );
+  // The body's own blocks, not the overall box: a camera above a car's bonnet is in clear air,
+  // and one beside a rounded cabin's corner is outside it.
+  return isInsideBodySolid([pose.x, pose.y, pose.z], vehicle);
 }
 
 /** Everything the sensor editor's readout needs, from one frustum. */

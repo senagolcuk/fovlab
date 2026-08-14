@@ -51,25 +51,38 @@ export function isInsideFootprint(p: Vec2, vehicle: Vehicle): boolean {
  * measuring against the same four edges it always did.
  */
 export function footprintPolygon(vehicle: Vehicle): Vec2[] {
-  const r = cornerRadius(vehicle);
   const [iL, iW] = innerHalfExtents(vehicle);
+  return roundedRectPolygon(-iL, iL, iW, cornerRadius(vehicle));
+}
 
+/**
+ * The same outline for any rectangle, given the inner half-extents its corner discs sweep around.
+ *
+ * Exists so a block of a stepped body is drawn from the same shape family as the whole vehicle —
+ * a car's cabin is as entitled to rounded corners as its bonnet, and both come from here.
+ */
+export function roundedRectPolygon(
+  innerMinX: number,
+  innerMaxX: number,
+  innerHalfWidth: number,
+  r: number,
+): Vec2[] {
   if (r <= 0) {
     return [
-      [iL, iW],
-      [-iL, iW],
-      [-iL, -iW],
-      [iL, -iW],
+      [innerMaxX, innerHalfWidth],
+      [innerMinX, innerHalfWidth],
+      [innerMinX, -innerHalfWidth],
+      [innerMaxX, -innerHalfWidth],
     ];
   }
 
   const points: Vec2[] = [];
   // Corner centres in counter-clockwise order, each with the angle its arc starts at.
   const corners: Array<[number, number, number]> = [
-    [iL, iW, 0],
-    [-iL, iW, Math.PI / 2],
-    [-iL, -iW, Math.PI],
-    [iL, -iW, (3 * Math.PI) / 2],
+    [innerMaxX, innerHalfWidth, 0],
+    [innerMinX, innerHalfWidth, Math.PI / 2],
+    [innerMinX, -innerHalfWidth, Math.PI],
+    [innerMaxX, -innerHalfWidth, (3 * Math.PI) / 2],
   ];
   for (const [cx, cy, start] of corners) {
     for (let i = 0; i <= ARC_SEGMENTS; i++) {
@@ -108,39 +121,4 @@ export function footprintExitRadius(cos: number, sin: number, vehicle: Vehicle):
   const c = iL * iL + iW * iW - r * r;
   const disc = k * k - c;
   return disc <= 0 ? k : k + Math.sqrt(disc);
-}
-
-/**
- * The outline trimmed to a range of X, for drawing one block of a stepped body.
- *
- * Sutherland–Hodgman against two half-planes. The outline is convex — a rectangle swept by a
- * disc always is — so the result is a single convex polygon and the clip cannot split it in two.
- */
-export function clipPolygonToX(polygon: Vec2[], minX: number, maxX: number): Vec2[] {
-  const clip = (poly: Vec2[], keep: (p: Vec2) => boolean, cross: (a: Vec2, b: Vec2) => Vec2) => {
-    const out: Vec2[] = [];
-    for (let i = 0; i < poly.length; i++) {
-      const a = poly[(i + poly.length - 1) % poly.length];
-      const b = poly[i];
-      const inA = keep(a);
-      const inB = keep(b);
-      if (inB) {
-        if (!inA) out.push(cross(a, b));
-        out.push(b);
-      } else if (inA) {
-        out.push(cross(a, b));
-      }
-    }
-    return out;
-  };
-
-  const at = (a: Vec2, b: Vec2, x: number): Vec2 => {
-    const t = (x - a[0]) / (b[0] - a[0]);
-    return [x, a[1] + t * (b[1] - a[1])];
-  };
-
-  let out = clip(polygon, (p) => p[0] >= minX, (a, b) => at(a, b, minX));
-  if (out.length === 0) return out;
-  out = clip(out, (p) => p[0] <= maxX, (a, b) => at(a, b, maxX));
-  return out;
 }
