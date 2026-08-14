@@ -1,7 +1,15 @@
 import Box from '@mui/material/Box';
 import { Panel, Readout } from './Panel';
 
-/** Where a key differs on macOS, both spellings are given, separated by a slash. */
+/**
+ * The key and mouse reference.
+ *
+ * Called Shortcuts rather than Navigation: two thirds of it is navigation, but undo, delete and
+ * suppressing the snap are not, and a panel named for only part of what it lists is a panel
+ * people stop opening.
+ *
+ * Where a key differs on macOS, both spellings are given, separated by a slash.
+ */
 const KEYS: Array<[string, string]> = [
   ['Scroll', 'Zoom'],
   ['Middle-drag', 'Pan, in any pane'],
@@ -17,9 +25,9 @@ const KEYS: Array<[string, string]> = [
   ['Alt / Option while dragging', 'Ignore the 15 cm snap to the body'],
 ];
 
-export default function NavigationPanel() {
+export default function ShortcutsPanel() {
   return (
-    <Panel title="Navigation" defaultExpanded={false}>
+    <Panel title="Shortcuts" defaultExpanded={false}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
         {KEYS.map(([k, v]) => (
           <Readout key={k} label={k} value={v} />

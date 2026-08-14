@@ -27,7 +27,8 @@
       "Bash(google-chrome --headless=old --disable-gpu --use-angle=swiftshader --enable-unsafe-swiftshader --hide-scrollbars --window-size=1600,900 --virtual-time-budget=15000 --screenshot=/tmp/claude-1000/-home-sena-projects-fov/e020b09e-32e7-401b-a843-db24762d4522/scratchpad/clip.png --user-data-dir=/tmp/claude-1000/-home-sena-projects-fov/e020b09e-32e7-401b-a843-db24762d4522/scratchpad/mp_clip http://localhost:5173/)",
       "Bash(grep -n \"PaneLabel\\\\|viewportRects\\\\|VIEW_NAMES.map\\\\|rects\\\\.\\\\|function Pane\\\\|<Canvas\\\\|Box$\" src/scene/Stage.tsx)",
       "Bash(google-chrome --headless=old --disable-gpu --use-angle=swiftshader --enable-unsafe-swiftshader --hide-scrollbars --window-size=1600,900 --virtual-time-budget=16000 --screenshot=/tmp/claude-1000/-home-sena-projects-fov/e020b09e-32e7-401b-a843-db24762d4522/scratchpad/pin_top.png --user-data-dir=/tmp/claude-1000/-home-sena-projects-fov/e020b09e-32e7-401b-a843-db24762d4522/scratchpad/pt http://localhost:5173/?max=TOP)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git mv *)"
     ],
     "additionalDirectories": [
       "/home/sena/projects/fov/src"

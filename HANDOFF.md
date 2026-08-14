@@ -45,7 +45,7 @@ What exists and works:
   sensor. Dimension lines over the orthographic panes.
 - An optional merged draw: every visible FOV as one shape in one colour, so overlaps stop
   compounding. Shading only — each sensor keeps its own range.
-- Sidebar: vehicle, display, sensor list with inline editor, coverage report, navigation help.
+- Sidebar: vehicle, display, sensor list with inline editor, coverage report, the key and mouse reference.
   JSON export and import, localStorage autosave, Reset, fullscreen.
 - Dragging, gated behind the `Drag` control: direct 2D drag in TOP, `TransformControls` gizmo in
   ISO, snap to the body with face-normal alignment and Alt to suppress.

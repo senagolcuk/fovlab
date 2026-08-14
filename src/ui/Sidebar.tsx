@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box';
 import CoverageReport from './CoverageReport';
 import DisplayPanel from './DisplayPanel';
-import NavigationPanel from './NavigationPanel';
+import ShortcutsPanel from './ShortcutsPanel';
 import SensorList from './SensorList';
 import VehiclePanel from './VehiclePanel';
 
@@ -30,7 +30,7 @@ export default function Sidebar() {
       <DisplayPanel />
       <SensorList />
       <CoverageReport />
-      <NavigationPanel />
+      <ShortcutsPanel />
     </Box>
   );
 }
