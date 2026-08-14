@@ -11,27 +11,19 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { View } from '@react-three/drei';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { VIEW_NAMES, paneGrowth, viewportRects, type ViewName } from '../core/viewport';
+import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import type { Rect } from '../core/types';
 import {
-  ZOOM_LIMITS,
   useStore,
   type IsoViewState,
   type OrthoViewState,
   type ViewsState,
 } from '../store/useStore';
-import { clamp } from '../core/rotation';
 
-/**
- * A touch more than the pane's own growth. Maximising is asking to look at something closely, so
- * matching the old framing exactly would undersell it — but far enough below the fit margin that
- * a layout framed in the tiled pane does not lose its edges here.
- */
-const MAXIMIZED_EXTRA_ZOOM = 1.25;
 import { IsoCamera, OrthoCamera } from './Cameras';
 import DimensionOverlay from './DimensionOverlay';
 import Gizmo from './Gizmo';
@@ -41,10 +33,9 @@ import { registerPaneScene, setSceneHandle } from './exportBridge';
 import {
   AXIS_HINTS,
   ORTHO_DEFS,
-  PANE_FIT_MARGIN,
+  FIT_MARGIN,
   fitIso,
   fitOrtho,
-  panForPoint,
   sceneBounds,
   vehicleCentre,
   type OrthoName,
@@ -240,8 +231,14 @@ export default function Stage() {
         )[name];
         if (name === 'ISO') {
           next.ISO =
-            fitIso(current.ISO, points, rect.width, rect.height, PANE_FIT_MARGIN.ISO) ??
-            current.ISO;
+            fitIso(
+              current.ISO,
+              points,
+              rect.width,
+              rect.height,
+              FIT_MARGIN,
+              vehicleCentre(state.vehicle),
+            ) ?? current.ISO;
         } else {
           next[name] =
             fitOrtho(
@@ -249,8 +246,8 @@ export default function Stage() {
               points,
               rect.width,
               rect.height,
-              PANE_FIT_MARGIN[name],
-              // Keeps the body off the border when every sensor points one way.
+              FIT_MARGIN,
+              // Dead centre, in every pane and in both layouts.
               vehicleCentre(state.vehicle),
             ) ?? current[name];
         }
@@ -276,20 +273,15 @@ export default function Stage() {
   /**
    * Framing for a maximised pane, and the way back.
    *
-   * Maximising doubles the room, so the view is scaled by the pane's own growth — the same
-   * fraction of the pane stays covered and the drawing comes closer rather than the extra space
-   * appearing around it — with a little more on top, since the point of maximising is to look at
-   * something closely.
+   * Maximising refits the pane, which is the same thing pressing `F` does. Scaling the existing
+   * view by the pane's growth instead looked equivalent and was not: the pane doubles while the
+   * scaling took the zoom further than that, so a layout already filling its tiled pane spilled
+   * over the edges of the big one.
    *
-   * It also centres on the vehicle. A fitted view is framed on the bounding box of the vehicle
-   * *and* every FOV, and volumes reaching forward pull that centre well ahead of the body, which
-   * left the vehicle sitting low in the enlarged pane. The vehicle is the thing everything else
-   * is positioned against, so it is what the middle of the pane should hold.
-   *
-   * Restoring puts the saved view straight back rather than undoing the arithmetic, so the four-up
-   * layout returns exactly as it was left however much the maximised pane was panned around.
-   * Only that one pane is touched: this is a change of screen area, not a zoom gesture, so
-   * `Link zoom` has no say in it.
+   * Restoring puts the saved view straight back rather than refitting, so the four-up layout
+   * returns exactly as it was left however much the maximised pane was moved around. Only that
+   * one pane is touched: this is a change of screen area, not a zoom gesture, so `Link zoom` has
+   * no say in it.
    */
   const savedView = useRef<{ name: ViewName; view: OrthoViewState | IsoViewState } | null>(null);
 
@@ -309,23 +301,12 @@ export default function Stage() {
 
     if (!maximizedView) return;
 
-    const el = hostRef.current;
-    if (!el) return;
-    const growth =
-      paneGrowth(el.clientWidth, el.clientHeight, maximizedView) * MAXIMIZED_EXTRA_ZOOM;
-    const centre = vehicleCentre(store.vehicle);
-
-    if (maximizedView === 'ISO') {
-      savedView.current = { name: 'ISO', view: { ...store.views.ISO } };
-      store.setIsoView({ target: centre, distance: store.views.ISO.distance / growth });
-    } else {
-      savedView.current = { name: maximizedView, view: { ...store.views[maximizedView] } };
-      store.setOrthoView(maximizedView, {
-        pan: panForPoint(ORTHO_DEFS[maximizedView], centre),
-        zoom: clamp(store.views[maximizedView].zoom * growth, ...ZOOM_LIMITS),
-      });
-    }
-  }, [maximizedView]);
+    savedView.current =
+      maximizedView === 'ISO'
+        ? { name: 'ISO', view: { ...store.views.ISO } }
+        : { name: maximizedView, view: { ...store.views[maximizedView] } };
+    fitPanes(maximizedView);
+  }, [maximizedView, fitPanes]);
 
   return (
     <Box

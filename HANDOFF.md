@@ -306,22 +306,25 @@ so open it and click `Add sensor`.
    Panning is always per-pane, in both modes.
 4. Drag in ISO to orbit; elevation stops at ±83°. Shift+drag pans instead.
 5. The button in a pane's top-right corner fills the viewport area with that pane; pressing it
-   again, or `Esc`, brings the four back. Maximising centres the **vehicle** in the pane and
-   scales the view by the pane's growth and a little over, so the drawing comes closer rather
-   than the extra room appearing around it. The vehicle must land dead centre — check it against
-   the grid crosshair, and use the pinned-height trick below, or the capture artifact will make
-   it look low. Restoring puts the saved view straight back, so the four-up layout returns exactly
+   again, or `Esc`, brings the four back. Maximising **refits** that pane, which is the same thing
+   `F` does — so the drawing arrives framed rather than merely enlarged, and nothing spills over
+   the edges. Restoring puts the saved view straight back, so the four-up layout returns exactly
    as it was left however much the maximised pane was moved around. `core/viewport.ts` still hands
    back a rect per view when one is maximised; the other three come back empty, and an empty rect
    is the signal not to mount that pane.
-6. Double-click a pane fits that pane only. `Fit all views` fits all four — a long-range sensor must
-   never be clipped. Measured on a forward-looking layout, a fit should leave FRONT and ISO
-   filling about 98% of their pane's binding dimension and TOP and LEFT about 88%: those two keep
-   the wider margin because they are read against the grid and TOP is where sensors are dragged.
-   The fit also pulls the framing towards the vehicle, so a layout whose coverage all points one
-   way does not push the body against a border. In LEFT it can only go so far — with every sensor
-   looking forward the body genuinely sits at one end of the content, and cropping the coverage to
-   centre it is not something a fit may do.
+6. Double-click a pane fits that pane only. `Fit all views` fits all four — a long-range sensor
+   must never be clipped, and **the vehicle must sit dead centre in every pane, in both layouts**.
+   Check it against the grid crosshair, using the pinned-height trick below, or the capture
+   artifact will make it look low.
+
+   A fit is framed symmetrically about the body rather than around the bounding box. That is what
+   holds the body in the middle, and it costs size whenever the coverage is lopsided: the empty
+   side has to be given as much room as the full one. Measured on a forward-looking layout, TOP
+   went from filling 88% of its pane to 62%, LEFT from 88% to 53%. The fit margin came down from
+   1.14 to 1.04 to claw some of that back, which is safe because the symmetry already keeps the
+   content off three sides. If the size matters more than the centring, that trade is the thing to
+   revisit — `centreOn` is optional on both `fitOrtho` and `fitIso`, and dropping it restores the
+   bounding-box framing exactly.
 7. Check the pane labels: `TOP` should read nose-up with the vehicle's right on screen right;
    `FRONT` looks aft with the vehicle's left on screen right; `LEFT` has the nose pointing screen
    left. Each label shows its scale in metres.

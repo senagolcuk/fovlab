@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import type { SensorInstance, Vec3, Vehicle } from '../../core/types';
 import {
   FIT_MARGIN,
-  FIT_MARGIN_TIGHT,
   ORTHO_DEFS,
   fitIso,
   fitOrtho,
@@ -98,7 +97,7 @@ describe('fitOrtho', () => {
       [10, 4, 0],
     ];
     const fit = fitOrtho(ORTHO_DEFS.TOP, tall, 600, 400)!;
-    expect(fit.zoom).toBeCloseTo(400 / (20 * 1.14), 6);
+    expect(fit.zoom).toBeCloseTo(400 / (20 * FIT_MARGIN), 6);
   });
 
   it('returns null when there is nothing to frame', () => {
@@ -146,6 +145,22 @@ describe('fitIso', () => {
     expect(Math.max(spanX / W, spanY / H)).toBeGreaterThan(0.8);
   });
 
+  it('pins the target when given one, so the vehicle sits dead centre', () => {
+    const centre: Vec3 = [0, 0, 0.95];
+    const fit = fitIso(view, wideFlat, W, H, FIT_MARGIN, centre)!;
+    expect(fit.target).toEqual(centre);
+    const p = projectToIsoPane(centre, fit, W, H)!;
+    expect(p.x).toBeCloseTo(W / 2, 4);
+    expect(p.y).toBeCloseTo(H / 2, 4);
+    for (const q of wideFlat) {
+      const s = projectToIsoPane(q, fit, W, H)!;
+      expect(s.x).toBeGreaterThanOrEqual(-0.5);
+      expect(s.x).toBeLessThanOrEqual(W + 0.5);
+      expect(s.y).toBeGreaterThanOrEqual(-0.5);
+      expect(s.y).toBeLessThanOrEqual(H + 0.5);
+    }
+  });
+
   it('centres what it framed', () => {
     // Exact at the target's own depth; a pixel or two out once the rest of the box is projected.
     const fit = fitIso(view, wideFlat, W, H)!;
@@ -174,7 +189,7 @@ describe('fitIso', () => {
   });
 });
 
-describe('fitOrtho biased towards the vehicle', () => {
+describe('fitOrtho centred on the vehicle', () => {
   // Coverage all forward, so the body sits at one end of the content.
   const forward: Vec3[] = [
     [-2.4, -0.95, 0],
@@ -185,45 +200,68 @@ describe('fitOrtho biased towards the vehicle', () => {
     [16, 8, 0],
   ];
   const centre: Vec3 = [0, 0, 0.95];
+  const W = 620;
+  const H = 382;
 
-  it('moves the body towards the middle', () => {
-    const plain = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382)!;
-    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
-    const before = orthoWorldToPane(centre, ORTHO_DEFS.LEFT, plain, 620, 382);
-    const after = orthoWorldToPane(centre, ORTHO_DEFS.LEFT, biased, 620, 382);
-    expect(Math.abs(after.x - 310)).toBeLessThan(Math.abs(before.x - 310));
-  });
-
-  it('never clips: every point stays inside the pane', () => {
-    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
-    for (const p of forward) {
-      const q = orthoWorldToPane(p, ORTHO_DEFS.LEFT, biased, 620, 382);
-      expect(q.x).toBeGreaterThanOrEqual(0);
-      expect(q.x).toBeLessThanOrEqual(620);
-      expect(q.y).toBeGreaterThanOrEqual(0);
-      expect(q.y).toBeLessThanOrEqual(382);
+  it('puts the body dead centre in every pane', () => {
+    for (const def of Object.values(ORTHO_DEFS)) {
+      const fit = fitOrtho(def, forward, W, H, FIT_MARGIN, centre)!;
+      const p = orthoWorldToPane(centre, def, fit, W, H);
+      expect(p.x).toBeCloseTo(W / 2, 6);
+      expect(p.y).toBeCloseTo(H / 2, 6);
     }
   });
 
-  it('leaves a gap all round rather than pinning content to the frame', () => {
-    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
-    const ps = forward.map((p) => orthoWorldToPane(p, ORTHO_DEFS.LEFT, biased, 620, 382));
-    expect(Math.min(...ps.map((q) => q.x))).toBeGreaterThan(0);
-    expect(Math.max(...ps.map((q) => q.x))).toBeLessThan(620);
-    expect(Math.min(...ps.map((q) => q.y))).toBeGreaterThan(0);
-    expect(Math.max(...ps.map((q) => q.y))).toBeLessThan(382);
+  it('still clips nothing', () => {
+    for (const def of Object.values(ORTHO_DEFS)) {
+      const fit = fitOrtho(def, forward, W, H, FIT_MARGIN, centre)!;
+      for (const q of forward) {
+        const p = orthoWorldToPane(q, def, fit, W, H);
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.x).toBeLessThanOrEqual(W);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeLessThanOrEqual(H);
+      }
+    }
   });
 
-  it('leaves the zoom alone — only the framing shifts', () => {
-    const plain = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382)!;
-    const biased = fitOrtho(ORTHO_DEFS.LEFT, forward, 620, 382, FIT_MARGIN, centre)!;
-    expect(biased.zoom).toBe(plain.zoom);
+  it('shows the same number of metres either side of the body', () => {
+    const fit = fitOrtho(ORTHO_DEFS.LEFT, forward, W, H, FIT_MARGIN, centre)!;
+    const left = orthoWorldToPane(centre, ORTHO_DEFS.LEFT, fit, W, H).x;
+    expect(left).toBeCloseTo(W / 2, 6);
+    // Symmetry is the point: a metre forward and a metre back cost the same pixels.
+    const ahead = orthoWorldToPane([1, 0, 0.95], ORTHO_DEFS.LEFT, fit, W, H).x;
+    const behind = orthoWorldToPane([-1, 0, 0.95], ORTHO_DEFS.LEFT, fit, W, H).x;
+    expect(ahead - left).toBeCloseTo(left - behind, 6);
+  });
+
+  it('gives up some size for the symmetry when content is lopsided', () => {
+    const plain = fitOrtho(ORTHO_DEFS.LEFT, forward, W, H)!;
+    const centred = fitOrtho(ORTHO_DEFS.LEFT, forward, W, H, FIT_MARGIN, centre)!;
+    expect(centred.zoom).toBeLessThan(plain.zoom);
+  });
+
+  it('costs nothing when the content is already symmetric', () => {
+    const symmetric: Vec3[] = [
+      [-10, -10, 0],
+      [10, 10, 2],
+    ];
+    const plain = fitOrtho(ORTHO_DEFS.TOP, symmetric, W, H)!;
+    const centred = fitOrtho(ORTHO_DEFS.TOP, symmetric, W, H, FIT_MARGIN, [0, 0, 1])!;
+    expect(centred.zoom).toBeCloseTo(plain.zoom, 6);
   });
 
   it('a tighter margin fills more of the pane', () => {
-    const loose = fitOrtho(ORTHO_DEFS.FRONT, forward, 620, 382, FIT_MARGIN)!;
-    const tight = fitOrtho(ORTHO_DEFS.FRONT, forward, 620, 382, FIT_MARGIN_TIGHT)!;
+    const loose = fitOrtho(ORTHO_DEFS.FRONT, forward, W, H, 1.2, centre)!;
+    const tight = fitOrtho(ORTHO_DEFS.FRONT, forward, W, H, 1.0, centre)!;
     expect(tight.zoom).toBeGreaterThan(loose.zoom);
+  });
+
+  it('leaves a gap on the longest reach, which is the only side that can touch', () => {
+    const fit = fitOrtho(ORTHO_DEFS.LEFT, forward, W, H, FIT_MARGIN, centre)!;
+    const ps = forward.map((p) => orthoWorldToPane(p, ORTHO_DEFS.LEFT, fit, W, H));
+    expect(Math.min(...ps.map((q) => q.x))).toBeGreaterThan(0);
+    expect(Math.max(...ps.map((q) => q.x))).toBeLessThan(W);
   });
 });
 

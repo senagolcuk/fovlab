@@ -21,21 +21,14 @@ export type OrthoName = 'TOP' | 'FRONT' | 'LEFT';
 export const ORTHO_DISTANCE = 500;
 export const ISO_FOV = 36;
 /**
- * Room left around the bounding box when fitting.
+ * Room left around the content when fitting.
  *
- * TOP and LEFT keep the wider margin: TOP is the pane sensors are dragged in, and both are read
- * against the grid, so a layout pinned to the frame is harder to work in. FRONT and ISO are
- * looked at rather than worked in, and there the breathing room only made everything small.
+ * One value for every pane, and a small one. The wide margin was there so a layout would not sit
+ * pinned to the frame, and centring on the vehicle already guarantees that on three sides — only
+ * the longest reach can approach an edge. Keeping the old 1.14 as well would have taken another
+ * eighth off a framing that symmetry has already made smaller.
  */
-export const FIT_MARGIN = 1.14;
-export const FIT_MARGIN_TIGHT = 1.02;
-
-export const PANE_FIT_MARGIN: Record<ViewName, number> = {
-  TOP: FIT_MARGIN,
-  LEFT: FIT_MARGIN,
-  FRONT: FIT_MARGIN_TIGHT,
-  ISO: FIT_MARGIN_TIGHT,
-};
+export const FIT_MARGIN = 1.04;
 
 export interface OrthoDef {
   /** Screen-right, screen-up and the direction from the target to the camera, in world space. */
@@ -228,13 +221,15 @@ export function fitOrtho(
   paneHeight: number,
   margin = FIT_MARGIN,
   /**
-   * Pulled towards this point once the zoom is settled, as far as it can go without letting
-   * anything leave the pane. Framing the bounding box alone centres the *extent*, and a layout
-   * whose coverage all points one way then pushes the vehicle against a border — in LEFT, with
-   * every sensor looking forward, it ends up hard against the right edge. Nothing is ever
-   * clipped to achieve this: it only spends slack the fit had already left over.
+   * Framed symmetrically about this point, so it lands dead centre in the pane.
+   *
+   * Framing the bounding box instead centres the *extent*, and coverage that all points one way
+   * then pushes the vehicle against a border — in LEFT, with every sensor looking forward, it
+   * ended up at 86% across. Symmetry costs some size when the content is lopsided, since the
+   * shorter side has to be given as much room as the longer one. It buys a pane whose middle is
+   * always the vehicle and whose halves are always the same number of metres.
    */
-  preferCentreOn?: Vec3,
+  centreOn?: Vec3,
 ): OrthoViewState | null {
   if (points.length === 0 || paneWidth <= 0 || paneHeight <= 0) return null;
 
@@ -252,35 +247,18 @@ export function fitOrtho(
     if (v > maxV) maxV = v;
   }
 
-  const spanU = Math.max(maxU - minU, 1e-3) * margin;
-  const spanV = Math.max(maxV - minV, 1e-3) * margin;
-  const zoom = Math.min(paneWidth / spanU, paneHeight / spanV);
+  const pan: [number, number] = centreOn
+    ? panForPoint(def, centreOn)
+    : [(minU + maxU) / 2, (minV + maxV) / 2];
 
-  const pan: [number, number] = [(minU + maxU) / 2, (minV + maxV) / 2];
+  // Half-spans measured from wherever the pane centre landed, so nothing falls outside it.
+  const halfU = Math.max(maxU - pan[0], pan[0] - minU);
+  const halfV = Math.max(maxV - pan[1], pan[1] - minV);
 
-  if (preferCentreOn) {
-    const wanted = panForPoint(def, preferCentreOn);
-    pan[0] = shiftToward(pan[0], wanted[0], paneWidth / (2 * zoom) - (maxU - minU) / 2);
-    pan[1] = shiftToward(pan[1], wanted[1], paneHeight / (2 * zoom) - (maxV - minV) / 2);
-  }
+  const spanU = Math.max(halfU * 2, 1e-3) * margin;
+  const spanV = Math.max(halfV * 2, 1e-3) * margin;
 
-  return { zoom, pan };
-}
-
-/**
- * How much of the leftover room a shift may spend.
- *
- * Spending all of it puts the content flush against the frame on the far side, which is the very
- * thing the fit margin exists to prevent. Half moves the body noticeably off the border and still
- * leaves a gap all the way round.
- */
-const SHIFT_BUDGET = 0.5;
-
-/** Moves `from` towards `towards`, by at most `slack` of the room the fit left over. */
-function shiftToward(from: number, towards: number, slack: number): number {
-  if (!(slack > 0)) return from;
-  const limit = slack * SHIFT_BUDGET;
-  return from + Math.max(-limit, Math.min(limit, towards - from));
+  return { zoom: Math.min(paneWidth / spanU, paneHeight / spanV), pan };
 }
 
 export function fitIso(
@@ -288,7 +266,9 @@ export function fitIso(
   points: Vec3[],
   paneWidth: number,
   paneHeight: number,
-  margin = FIT_MARGIN_TIGHT,
+  margin = FIT_MARGIN,
+  /** Pinned as the orbit target, so it sits dead centre. See `fitOrtho`. */
+  centreOn?: Vec3,
 ): IsoViewState | null {
   if (points.length === 0 || paneWidth <= 0 || paneHeight <= 0) return null;
 
@@ -352,10 +332,11 @@ export function fitIso(
    * measures the error where it actually matters, in the projection, and takes it out. Three is
    * comfortably enough to land inside a pixel.
    */
-  let target = boxCentre.clone();
+  let target = centreOn ? new THREE.Vector3(...centreOn) : boxCentre.clone();
   let distance = distanceFor(target);
 
-  for (let pass = 0; pass < 3; pass++) {
+  // A pinned target is the answer already; there is nothing left to recentre.
+  for (let pass = 0; !centreOn && pass < 3; pass++) {
     const camera = target.clone().addScaledVector(n, distance);
     let minX = Infinity;
     let maxX = -Infinity;
