@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Pose } from '../../core/types';
-import {
-  FOOTPRINT_STEP,
-  GROUND_LIFT,
-  concatIndexed,
-  fovBuffers,
-  type IndexedGeometry,
-} from '../fovGeometry';
+import { GROUND_LIFT, concatIndexed, fovBuffers, type IndexedGeometry } from '../fovGeometry';
 
 function pose(p: Partial<Pose> = {}): Pose {
   return { x: 0, y: 0, z: 2, yaw: 0, pitch: -90, roll: 0, ...p };
@@ -72,17 +66,11 @@ describe('fovBuffers', () => {
     }
   });
 
-  it('accepts a lift of its own, which is how coplanar footprints are told apart', () => {
-    const lift = GROUND_LIFT + 3 * FOOTPRINT_STEP;
-    const b = fovBuffers(pose(), spec, 'axis', lift);
+  it('accepts a lift of its own', () => {
+    const b = fovBuffers(pose(), spec, 'axis', 0.02);
     for (let i = 2; i < b.footprint!.positions.length; i += 3) {
-      expect(b.footprint!.positions[i]).toBe(lift);
+      expect(b.footprint!.positions[i]).toBe(0.02);
     }
-  });
-
-  it('leaves the lift far below anything visible', () => {
-    // Twenty sensors must not stack up into a step anyone could see on a 1 m grid.
-    expect(20 * FOOTPRINT_STEP).toBeLessThan(0.005);
   });
 
   it('reports no footprint when the volume never reaches the ground', () => {

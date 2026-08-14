@@ -213,7 +213,8 @@ export default function Stage() {
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
         // `preserveDrawingBuffer` keeps the last frame readable so the image exporter can grab
         // the panes at any moment rather than only inside the render pass.
-        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
+        // `stencil` is off by default and the merged FOV paints through it.
+        gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true, stencil: true }}
         onCreated={({ gl }) => {
           gl.setClearColor(BACKGROUND);
           // Per-material clipping planes are ignored unless this is on.

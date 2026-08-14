@@ -143,37 +143,45 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     since corrected. Deleting a model freezes its numbers into the instances that used it rather
     than letting them fall through to the default.
 
-15. **The merged FOV is a depth trick, not a mesh boolean.** `Display > Merge overlaps` draws every
-    visible volume as one shape by recording the nearest surface in a depth-only pass and then
-    letting only that surface paint. Four things about `scene/MergedFov.tsx` look wrong and are not,
-    and three of them were arrived at by getting them wrong first:
+15. **The merged FOV paints through the stencil buffer, not a mesh boolean and not the depth
+    buffer.** `Display > Merge overlaps` puts every visible volume — and, when the ground clip is
+    on, every footprint — into one geometry, then draws it twice: a mask pass marks each covered
+    pixel in the stencil, and a colour pass paints only where the mark still stands and clears it
+    on the way past. The first fragment to reach a pixel paints and every later one is rejected.
+    Which fragment arrives first does not matter; they are all the same flat colour.
 
-    - The depth pass writes `DEPTH_BIAS` *behind* itself and the colour pass tests `less`, rather
-      than testing equality. Equality is the obvious reading and it is wrong: a fragment on a
-      shared triangle edge can be rasterised by either neighbour, and the two interpolate depth to
-      values differing in the last bit, so the seam goes unpainted. On a triangle fan that draws
+    The Canvas therefore asks for `stencil: true`. It is **off by default**, and without it the
+    material state is silently ignored and every overlap comes back.
+
+    Depth was tried first, three times, and cannot do this job. Recorded so nobody spends the
+    afternoon again:
+
+    - Depth deduplicates by *distance*, and two footprints on the ground plane are equally near.
+      Both paint, so the intersection came out darker than the rest — the exact compounding the
+      option exists to remove.
+    - Testing the colour pass for depth equality fails at shared triangle edges, where two
+      rasterisations interpolate to values differing in the last bit. On a triangle fan that drew
       every spoke as a ray from the apex.
-    - `polygonOffsetFactor` is 0. The slope term is what a shadow map wants; here it over-biases
-      exactly the polygons that are steepest in view — a lateral face seen edge-on — until the
-      surface behind passes the test too and the fold paints twice. The tie being broken is a
-      last-bit one, so a constant is the whole of it.
-    - It is **one** layer, drawn double-sided, not a front pass over a back pass. The shell version
-      looks more faithful — a single FOV is drawn double-sided, so front and back both paint — and
-      it is wrong here for a reason that only shows up with more than one sensor: at every fold the
-      two layers converge on the same depth and both paint, so each internal crease draws as a dark
-      line. Those creases are precisely what the merge exists to hide.
+    - Biasing the depth pass and testing `less` fixes the rays and then has to be tuned between
+      two failures: too small and the rays return, too large and the surface behind passes as
+      well. `polygonOffsetFactor` made it worse still, over-biasing exactly the polygons steepest
+      in view.
 
-      The honest cost of the flat version: a lone sensor looks flatter merged than unmerged, and
-      the volume reads as a silhouette rather than a shell. That was the trade the option was
-      chosen on — "tek renk, düz doluluk" — so do not "fix" it by adding the second layer back.
-    - The depth pass materials carry `transparent: true` even though `colorWrite` is `false`. That
-      is not for blending — it is what puts the pre-pass and the colour pass in the same render
-      list, so `renderOrder` decides their sequence. Left opaque, three runs every pre-pass before
-      any colour pass and the depth references trample each other.
+    A stencil is a counter rather than a measurement, so none of that arises.
 
-    Footprints are lifted by `FOOTPRINT_STEP` each so the nearest-surface test can tell coplanar
-    ones apart; twenty sensors span 2 mm. Nothing about the geometry changes — this is shading
-    only, and every range, area and coverage number is untouched.
+    One other thing that looks wrong: `transparent: true` on the mask pass, which writes no
+    colour. That is what puts both draws in the same render list, so `renderOrder` decides their
+    sequence. Left opaque, three runs the mask before every colour pass in the scene.
+
+    It is **one** flat layer, not a front pass over a back pass. The shell version looks more
+    faithful — a single FOV is drawn double-sided, so front and back both paint — and it is wrong
+    here: at every fold the two layers converge and both paint, so each crease between overlapping
+    volumes draws as a dark line, and those creases are precisely what the merge exists to hide.
+    The honest cost is that a lone sensor reads flatter merged than unmerged. That was the trade
+    the option was chosen on, so do not "fix" it by adding the second layer back.
+
+    Nothing about the geometry changes — this is shading only, and every range, area and coverage
+    number is untouched.
 
 16. **`SensorKind` is free text, not a closed union.** Ultrasonic and thermal are real sensors, and
     nothing geometric reads the field — it only ever labels.

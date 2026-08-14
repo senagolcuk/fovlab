@@ -13,15 +13,6 @@ import type { FovSpec, Pose, RangeMode } from '../core/types';
 /** Lifted off the ground plane just enough to beat the grid in the depth test. */
 export const GROUND_LIFT = 0.005;
 
-/**
- * Successive footprints are lifted by this much again.
- *
- * The merged fill picks the nearest surface per pixel, and coplanar polygons are all equally
- * near, so overlapping footprints would still blend into each other. A step far below anything
- * anyone can see breaks the tie without moving the drawing. Twenty sensors span 2 mm.
- */
-export const FOOTPRINT_STEP = 1e-4;
-
 export interface IndexedGeometry {
   positions: number[];
   indices: number[];
