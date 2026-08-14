@@ -17,14 +17,37 @@ import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import type { Rect } from '../core/types';
-import { ZOOM_LIMITS, useStore, type ViewsState } from '../store/useStore';
+import {
+  ZOOM_LIMITS,
+  useStore,
+  type IsoViewState,
+  type OrthoViewState,
+  type ViewsState,
+} from '../store/useStore';
+import { clamp } from '../core/rotation';
+
+/**
+ * A touch more than the pane's own growth. Maximising is asking to look at something closely, so
+ * matching the old framing exactly would undersell it — but far enough below the fit margin that
+ * a layout framed in the tiled pane does not lose its edges here.
+ */
+const MAXIMIZED_EXTRA_ZOOM = 1.25;
 import { IsoCamera, OrthoCamera } from './Cameras';
 import DimensionOverlay from './DimensionOverlay';
 import Gizmo from './Gizmo';
 import SceneContent from './SceneContent';
 import { usePaneGestures } from './usePaneGestures';
 import { registerPaneScene, setSceneHandle } from './exportBridge';
-import { AXIS_HINTS, ORTHO_DEFS, fitIso, fitOrtho, sceneBounds, type OrthoName } from './views';
+import {
+  AXIS_HINTS,
+  ORTHO_DEFS,
+  fitIso,
+  fitOrtho,
+  panForPoint,
+  sceneBounds,
+  vehicleCentre,
+  type OrthoName,
+} from './views';
 import { MONO } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
@@ -240,47 +263,56 @@ export default function Stage() {
   const onFitPane = useCallback((name: ViewName) => fitPanes(name), [fitPanes]);
 
   /**
-   * Grow the drawing along with the pane, and shrink it back on the way out.
+   * Framing for a maximised pane, and the way back.
    *
-   * Maximising doubles the room; without this the picture stays the size it was and the extra
-   * room just appears around it. Scaling by the pane's own growth keeps the same fraction of the
-   * pane covered, so the view comes closer rather than merely wider.
+   * Maximising doubles the room, so the view is scaled by the pane's own growth — the same
+   * fraction of the pane stays covered and the drawing comes closer rather than the extra space
+   * appearing around it — with a little more on top, since the point of maximising is to look at
+   * something closely.
    *
-   * The factor used on the way in is kept rather than recomputed on the way out, so a window
-   * resize in between cannot leave the restored view a little off from where it started. Only
-   * the maximised pane is touched — this is a change of screen area, not a zoom gesture, so
+   * It also centres on the vehicle. A fitted view is framed on the bounding box of the vehicle
+   * *and* every FOV, and volumes reaching forward pull that centre well ahead of the body, which
+   * left the vehicle sitting low in the enlarged pane. The vehicle is the thing everything else
+   * is positioned against, so it is what the middle of the pane should hold.
+   *
+   * Restoring puts the saved view straight back rather than undoing the arithmetic, so the four-up
+   * layout returns exactly as it was left however much the maximised pane was panned around.
+   * Only that one pane is touched: this is a change of screen area, not a zoom gesture, so
    * `Link zoom` has no say in it.
    */
-  const appliedGrowth = useRef(1);
+  const savedView = useRef<{ name: ViewName; view: OrthoViewState | IsoViewState } | null>(null);
 
   useEffect(() => {
     const previous = maximizedBefore.current;
     maximizedBefore.current = maximizedView;
     if (previous === maximizedView) return;
 
-    const scale = (name: ViewName, factor: number) => {
-      if (factor === 1) return;
-      const state = useStore.getState();
-      if (name === 'ISO') {
-        state.setIsoView({ distance: state.views.ISO.distance / factor });
-      } else {
-        const zoom = state.views[name].zoom * factor;
-        state.setOrthoView(name, {
-          zoom: Math.min(Math.max(zoom, ZOOM_LIMITS[0]), ZOOM_LIMITS[1]),
-        });
-      }
-    };
+    const store = useStore.getState();
 
-    if (previous) {
-      scale(previous, 1 / appliedGrowth.current);
-      appliedGrowth.current = 1;
+    if (previous && savedView.current?.name === previous) {
+      const saved = savedView.current.view;
+      if (previous === 'ISO') store.setIsoView(saved as IsoViewState);
+      else store.setOrthoView(previous, saved as OrthoViewState);
+      savedView.current = null;
     }
-    if (maximizedView) {
-      const el = hostRef.current;
-      appliedGrowth.current = el
-        ? paneGrowth(el.clientWidth, el.clientHeight, maximizedView)
-        : 1;
-      scale(maximizedView, appliedGrowth.current);
+
+    if (!maximizedView) return;
+
+    const el = hostRef.current;
+    if (!el) return;
+    const growth =
+      paneGrowth(el.clientWidth, el.clientHeight, maximizedView) * MAXIMIZED_EXTRA_ZOOM;
+    const centre = vehicleCentre(store.vehicle);
+
+    if (maximizedView === 'ISO') {
+      savedView.current = { name: 'ISO', view: { ...store.views.ISO } };
+      store.setIsoView({ target: centre, distance: store.views.ISO.distance / growth });
+    } else {
+      savedView.current = { name: maximizedView, view: { ...store.views[maximizedView] } };
+      store.setOrthoView(maximizedView, {
+        pan: panForPoint(ORTHO_DEFS[maximizedView], centre),
+        zoom: clamp(store.views[maximizedView].zoom * growth, ...ZOOM_LIMITS),
+      });
     }
   }, [maximizedView]);
 

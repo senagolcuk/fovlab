@@ -186,6 +186,25 @@ export function sceneBounds(
   return points;
 }
 
+/** The centre of the vehicle body, which is what a maximised pane centres itself on. */
+export function vehicleCentre(vehicle: Vehicle): Vec3 {
+  return [0, 0, vehicle.clearance + vehicle.height / 2];
+}
+
+/**
+ * The pan that puts `point` in the middle of an orthographic pane.
+ *
+ * `pan` is the world position of the pane centre expressed along that pane's screen-right and
+ * screen-up axes, so centring is just the projection — the same two dot products `fitOrtho` and
+ * `orthoWorldToPane` use, rather than a third opinion about where the middle is.
+ */
+export function panForPoint(def: OrthoDef, point: Vec3): [number, number] {
+  return [
+    point[0] * def.right.x + point[1] * def.right.y + point[2] * def.right.z,
+    point[0] * def.up.x + point[1] * def.up.y + point[2] * def.up.z,
+  ];
+}
+
 /* -------------------------------------------------------------------------- fitting */
 
 export function fitOrtho(

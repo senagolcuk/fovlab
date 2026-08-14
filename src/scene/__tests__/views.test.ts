@@ -9,9 +9,11 @@ import {
   isoCameraPosition,
   isoCameraQuaternion,
   orthoPaneDeltaToWorld,
+  panForPoint,
   orthoWorldToPane,
   projectToIsoPane,
   sceneBounds,
+  vehicleCentre,
 } from '../views';
 
 const vehicle: Vehicle = {
@@ -247,5 +249,32 @@ describe('sceneBounds', () => {
       pose: { x: 0, y: 0, z: 1, yaw: 0, pitch: 0, roll: 0 },
     };
     expect(sceneBounds(vehicle, [hidden], [])).toHaveLength(8);
+  });
+})
+
+describe('centring a maximised pane', () => {
+  it('puts the vehicle centre at half its height, on the centreline', () => {
+    expect(vehicleCentre(vehicle)).toEqual([0, 0, vehicle.clearance + vehicle.height / 2]);
+  });
+
+  it('lands the vehicle centre exactly in the middle of every orthographic pane', () => {
+    const centre = vehicleCentre(vehicle);
+    for (const def of Object.values(ORTHO_DEFS)) {
+      const view = { zoom: 40, pan: panForPoint(def, centre) };
+      const p = orthoWorldToPane(centre, def, view, 600, 400);
+      expect(p.x).toBeCloseTo(300, 9);
+      expect(p.y).toBeCloseTo(200, 9);
+    }
+  });
+
+  it('centres on the body in TOP, whatever the sensors reach', () => {
+    // TOP pans along -Y and +X, so a vehicle on the origin centres at the origin.
+    expect(panForPoint(ORTHO_DEFS.TOP, vehicleCentre(vehicle))).toEqual([0, 0]);
+  });
+
+  it('centres on the body height in FRONT and LEFT', () => {
+    const z = vehicle.clearance + vehicle.height / 2;
+    expect(panForPoint(ORTHO_DEFS.FRONT, vehicleCentre(vehicle))).toEqual([0, z]);
+    expect(panForPoint(ORTHO_DEFS.LEFT, vehicleCentre(vehicle))).toEqual([0, z]);
   });
 });
