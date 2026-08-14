@@ -19,15 +19,19 @@ export function Panel({
   children,
   defaultExpanded = true,
   action,
+  onExpandedChange,
 }: {
   title: string;
   children: ReactNode;
   defaultExpanded?: boolean;
   action?: ReactNode;
+  /** Fires when the section opens or closes, for sections that reset state on open. */
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   return (
     <Accordion
       defaultExpanded={defaultExpanded}
+      onChange={(_, expanded) => onExpandedChange?.(expanded)}
       disableGutters
       square
       sx={{

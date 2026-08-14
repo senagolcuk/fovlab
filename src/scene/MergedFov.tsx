@@ -35,13 +35,25 @@ import {
 export const MERGE_COLOR = PALETTE.blue;
 
 /**
+ * How far behind itself the depth pass writes, in depth units.
+ *
+ * Testing the colour pass for depth *equality* looks right and is not: a fragment on a shared
+ * triangle edge can be rasterised by either neighbour, and the two interpolate depth to values
+ * that differ in the last bit. The equality then fails and the seam goes unpainted — which on a
+ * triangle fan draws every spoke as a visible ray from the apex. Nudging the recorded depth just
+ * behind the surface and testing `less` instead accepts the whole surface and still rejects
+ * anything genuinely further back.
+ */
+const DEPTH_BIAS = 1;
+
+/**
  * One layer of colour over a whole set, whatever the overlaps.
  *
  * A depth-only pass records the nearest surface per pixel; the colour pass then paints only
- * fragments at exactly that depth. `transparent` on the depth pass is not for blending — it is
- * what puts both draws in the same render list, so `renderOrder` decides their sequence. Left
- * opaque, three would run every pre-pass before any colour pass and the depth references would
- * trample each other.
+ * fragments at that depth. `transparent` on the depth pass is not for blending — it is what puts
+ * both draws in the same render list, so `renderOrder` decides their sequence. Left opaque, three
+ * would run every pre-pass before any colour pass and the depth references would trample each
+ * other.
  */
 function UnionLayer({
   geometry,
@@ -65,6 +77,9 @@ function UnionLayer({
           colorWrite={false}
           transparent
           depthWrite
+          polygonOffset
+          polygonOffsetFactor={DEPTH_BIAS}
+          polygonOffsetUnits={DEPTH_BIAS}
           side={side}
           clippingPlanes={clip}
         />
@@ -75,8 +90,9 @@ function UnionLayer({
           transparent
           opacity={opacity}
           depthWrite={false}
-          // Only the surface the pre-pass recorded as nearest gets to paint.
-          depthFunc={THREE.EqualDepth}
+          // Only the surface the pre-pass recorded as nearest gets to paint; the bias is what
+          // keeps that from turning into a per-triangle-edge test.
+          depthFunc={THREE.LessDepth}
           side={side}
           clippingPlanes={clip}
         />

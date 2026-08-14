@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -25,11 +25,18 @@ import { Panel } from './Panel';
 import SensorEditor from './SensorEditor';
 import { MONO } from '../theme';
 
-function SensorRow({ id }: { id: string }) {
+function SensorRow({
+  id,
+  expanded,
+  onToggle,
+}: {
+  id: string;
+  expanded: boolean;
+  onToggle: (id: string) => void;
+}) {
   const sensor = useStore((s) => s.sensors.find((x) => x.id === id))!;
   const catalog = useStore((s) => s.catalog);
   const selectedId = useStore((s) => s.selectedId);
-  const select = useStore((s) => s.select);
   const updateSensor = useStore((s) => s.updateSensor);
 
   const selected = selectedId === sensor.id;
@@ -44,7 +51,7 @@ function SensorRow({ id }: { id: string }) {
       }}
     >
       <Box
-        onClick={() => select(selected ? null : sensor.id)}
+        onClick={() => onToggle(sensor.id)}
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -100,7 +107,7 @@ function SensorRow({ id }: { id: string }) {
         </Tooltip>
       </Box>
 
-      <Collapse in={selected} unmountOnExit>
+      <Collapse in={expanded} unmountOnExit>
         <Box sx={{ px: 1, pb: 1, bgcolor: 'background.paper' }}>
           <SensorEditor sensor={sensor} />
         </Box>
@@ -117,7 +124,30 @@ export default function SensorList() {
   const importLayout = useStore((s) => s.importLayout);
   const clearSensors = useStore((s) => s.clearSensors);
   const requestFit = useStore((s) => s.requestFit);
+  const select = useStore((s) => s.select);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Which row is open, tracked here rather than read off the selection.
+   *
+   * The two used to be the same thing, so opening the section reopened the last sensor's editor
+   * and buried the list under it. They still move together in the direction that matters: picking
+   * a sensor in a viewport opens its row, because that is the one you went looking for.
+   */
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId) setExpandedId(selectedId);
+  }, [selectedId]);
+
+  const toggleRow = useCallback(
+    (id: string) => {
+      // Collapsing leaves the sensor selected: the gizmo and Delete still have something to act on.
+      setExpandedId((current) => (current === id ? null : id));
+      select(id);
+    },
+    [select],
+  );
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -140,14 +170,23 @@ export default function SensorList() {
   };
 
   return (
-    <Panel title="Sensors" defaultExpanded={false}>
+    <Panel
+      title="Sensors"
+      defaultExpanded={false}
+      // Opening the section is a request to see the list, not to carry on editing whichever
+      // sensor happened to be selected. Every row starts closed; the selection itself is left
+      // alone, so the gizmo and Duplicate still act on what they did before.
+      onExpandedChange={(open) => open && setExpandedId(null)}
+    >
       <Box sx={{ mx: -2 }}>
         {list.length === 0 ? (
           <Typography variant="body2" sx={{ color: 'text.secondary', px: 2, py: 1 }}>
             No sensors yet — add one to begin.
           </Typography>
         ) : (
-          list.map((id) => <SensorRow key={id} id={id} />)
+          list.map((id) => (
+            <SensorRow key={id} id={id} expanded={id === expandedId} onToggle={toggleRow} />
+          ))
         )}
       </Box>
 

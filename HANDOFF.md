@@ -145,8 +145,13 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
 
 15. **The merged FOV is a depth trick, not a mesh boolean.** `Display > Merge overlaps` draws every
     visible volume as one shape by recording the nearest surface in a depth-only pass and then
-    painting only fragments at exactly that depth. Three things about `scene/MergedFov.tsx` look
-    wrong and are not:
+    letting only that surface paint. Four things about `scene/MergedFov.tsx` look wrong and are not:
+
+    - The depth pass writes `DEPTH_BIAS` *behind* itself and the colour pass tests `less`, rather
+      than testing equality. Equality is the obvious reading and it is wrong: a fragment on a
+      shared triangle edge can be rasterised by either neighbour, and the two interpolate depth to
+      values differing in the last bit, so the seam goes unpainted. On a triangle fan that draws
+      every spoke as a ray from the apex — which is exactly what it did until the bias went in.
 
     - The depth pre-pass materials carry `transparent: true` even though `colorWrite` is `false`.
       That is not for blending — it is what puts the pre-pass and the colour pass in the same
@@ -156,11 +161,11 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
       pass overwrites the far pass's depth. Reversed, the far pass finds nothing to match.
     - It is two layers, not one. That is what a single FOV already looks like — its shell is drawn
       double-sided — so collapsing to one layer made a lone sensor change appearance the moment the
-      merge was switched on, which is exactly what a merge must not do. Measured: with one sensor,
-      merged and unmerged differ only along a one-pixel antialiasing seam at the silhouette, where
-      edge fragments fail the depth equality test. The interiors are identical.
+      merge was switched on, which is exactly what a merge must not do.
 
-    Footprints are lifted by `FOOTPRINT_STEP` each so the nearest-surface test can tell coplanar
+    Measured after the change: a lone sensor still differs only along the one-pixel silhouette
+    seam, so the bias does not let a second layer through. Footprints are lifted by
+    `FOOTPRINT_STEP` each so the nearest-surface test can tell coplanar
     ones apart; twenty sensors span 2 mm. Nothing about the geometry changes — this is shading
     only, and every range, area and coverage number is untouched.
 
@@ -321,9 +326,12 @@ so open it and click `Add sensor`.
 16. `Add model`: define a type with a free-text kind. It appears in the Model list, is selected for
     the current sensor, and survives a reload. `Delete model` returns the sensor to custom with the
     same numbers, not to 90°×60° 10 m.
-17. Add, duplicate and delete. A duplicate lands directly below its source with a fresh id, and
+17. Collapse the `SENSORS` section and reopen it. Every row must be closed, whatever was being
+    edited before, and the selection must survive — `Duplicate` and the gizmo still act on the same
+    sensor. Picking a sensor in a viewport still opens its row.
+18. Add, duplicate and delete. A duplicate lands directly below its source with a fresh id, and
     `Drag` returns to `Off` for every new sensor.
-18. The readout shows footprint area, X and Y extents and the blind gap. Move a sensor inside the
+19. The readout shows footprint area, X and Y extents and the blind gap. Move a sensor inside the
     vehicle body — the occlusion warning should appear.
 
 **Dragging**
