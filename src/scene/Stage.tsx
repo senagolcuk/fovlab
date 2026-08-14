@@ -11,13 +11,13 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { View } from '@react-three/drei';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
+import { VIEW_NAMES, paneGrowth, viewportRects, type ViewName } from '../core/viewport';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import type { Rect } from '../core/types';
-import { useStore, type ViewsState } from '../store/useStore';
+import { ZOOM_LIMITS, useStore, type ViewsState } from '../store/useStore';
 import { IsoCamera, OrthoCamera } from './Cameras';
 import DimensionOverlay from './DimensionOverlay';
 import Gizmo from './Gizmo';
@@ -228,6 +228,7 @@ export default function Stage() {
 
   const fitNonce = useStore((s) => s.fitNonce);
   const fittedOnce = useRef(false);
+  const maximizedBefore = useRef<ViewName | null>(null);
 
   useEffect(() => {
     if (size.width === 0 || size.height === 0) return;
@@ -237,6 +238,51 @@ export default function Stage() {
   }, [fitNonce, size.width, size.height, fitPanes]);
 
   const onFitPane = useCallback((name: ViewName) => fitPanes(name), [fitPanes]);
+
+  /**
+   * Grow the drawing along with the pane, and shrink it back on the way out.
+   *
+   * Maximising doubles the room; without this the picture stays the size it was and the extra
+   * room just appears around it. Scaling by the pane's own growth keeps the same fraction of the
+   * pane covered, so the view comes closer rather than merely wider.
+   *
+   * The factor used on the way in is kept rather than recomputed on the way out, so a window
+   * resize in between cannot leave the restored view a little off from where it started. Only
+   * the maximised pane is touched — this is a change of screen area, not a zoom gesture, so
+   * `Link zoom` has no say in it.
+   */
+  const appliedGrowth = useRef(1);
+
+  useEffect(() => {
+    const previous = maximizedBefore.current;
+    maximizedBefore.current = maximizedView;
+    if (previous === maximizedView) return;
+
+    const scale = (name: ViewName, factor: number) => {
+      if (factor === 1) return;
+      const state = useStore.getState();
+      if (name === 'ISO') {
+        state.setIsoView({ distance: state.views.ISO.distance / factor });
+      } else {
+        const zoom = state.views[name].zoom * factor;
+        state.setOrthoView(name, {
+          zoom: Math.min(Math.max(zoom, ZOOM_LIMITS[0]), ZOOM_LIMITS[1]),
+        });
+      }
+    };
+
+    if (previous) {
+      scale(previous, 1 / appliedGrowth.current);
+      appliedGrowth.current = 1;
+    }
+    if (maximizedView) {
+      const el = hostRef.current;
+      appliedGrowth.current = el
+        ? paneGrowth(el.clientWidth, el.clientHeight, maximizedView)
+        : 1;
+      scale(maximizedView, appliedGrowth.current);
+    }
+  }, [maximizedView]);
 
   return (
     <Box

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { applyMat3, multiplyMat3, rotationMatrix, transpose } from '../rotation';
 import { frustum } from '../frustum';
 import { groundPolygon, polygonArea, polygonExtents } from '../ground';
-import { EMPTY_RECT, viewportRects, VIEW_NAMES } from '../viewport';
+import { EMPTY_RECT, paneGrowth, viewportRects, VIEW_NAMES } from '../viewport';
 import type { Pose, Vec3 } from '../types';
 
 const TOL = 1e-4;
@@ -150,6 +150,21 @@ describe('acceptance', () => {
       }
       // Still exactly the canvas, so nothing is drawn twice or left blank.
       expect(VIEW_NAMES.reduce((sum, n) => sum + rects[n].width * rects[n].height, 0)).toBe(W * H);
+    }
+  });
+
+  it('10bb — a maximised pane grows by the factor its drawing is scaled by', () => {
+    const W = 1601;
+    const H = 901;
+    for (const name of VIEW_NAMES) {
+      const tiled = viewportRects(W, H)[name];
+      const growth = paneGrowth(W, H, name);
+      // The drawing must still fit: scaling by the limiting dimension can never push it off.
+      expect(tiled.width * growth).toBeLessThanOrEqual(W + 1e-9);
+      expect(tiled.height * growth).toBeLessThanOrEqual(H + 1e-9);
+      // A 2x2 tiling is half the canvas each way, so the factor is about two.
+      expect(growth).toBeGreaterThan(1.9);
+      expect(growth).toBeLessThan(2.1);
     }
   });
 

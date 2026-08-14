@@ -293,11 +293,12 @@ so open it and click `Add sensor`.
    Panning is always per-pane, in both modes.
 4. Drag in ISO to orbit; elevation stops at ±83°. Shift+drag pans instead.
 5. The button in a pane's top-right corner fills the viewport area with that pane; pressing it
-   again, or `Esc`, brings the four back. The zoom is deliberately left alone, so the drawing
-   stays exactly the size it was and there is simply more of it on screen — `F` or a double-click
-   fits it to the larger pane when that is what you want. `core/viewport.ts` still hands back a
-   rect per view when one is maximised; the other three come back empty, and an empty rect is the
-   signal not to mount that pane.
+   again, or `Esc`, brings the four back. The drawing grows with the pane — the scale label reads
+   the same metres-across before and after, because the pane doubled and so did the zoom — and
+   shrinks back on the way out. Maximise and restore without touching anything else and the view
+   must come back byte-identical; pan or zoom while maximised and that change must survive the
+   restore. `core/viewport.ts` still hands back a rect per view when one is maximised; the other
+   three come back empty, and an empty rect is the signal not to mount that pane.
 6. Double-click a pane fits that pane only. `Fit all views` fits all four — a long-range sensor must
    never be clipped.
 7. Check the pane labels: `TOP` should read nose-up with the vehicle's right on screen right;

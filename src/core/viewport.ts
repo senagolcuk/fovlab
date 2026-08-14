@@ -47,3 +47,17 @@ export function viewportRects(
     ISO: { x: leftW, y: topH, width: rightW, height: bottomH },
   };
 }
+
+/**
+ * How much bigger a pane gets when it is maximised, as a scale factor.
+ *
+ * Used to grow the drawing by the same amount, so a maximised pane shows the same *fraction* of
+ * itself filled as the tiled one did — the picture comes closer rather than the extra room simply
+ * appearing around it. The limiting dimension wins, for the same reason a fit uses it: scaling by
+ * the more generous one would push the content off the other edge.
+ */
+export function paneGrowth(width: number, height: number, name: ViewName): number {
+  const tiled = viewportRects(width, height)[name];
+  if (tiled.width <= 0 || tiled.height <= 0) return 1;
+  return Math.min(width / tiled.width, height / tiled.height);
+}
