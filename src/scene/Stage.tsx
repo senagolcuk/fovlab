@@ -14,7 +14,11 @@ import Typography from '@mui/material/Typography';
 import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
+import Button from '@mui/material/Button';
+import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
+import Paper from '@mui/material/Paper';
+import Popper from '@mui/material/Popper';
 import Tooltip from '@mui/material/Tooltip';
 import type { Rect } from '../core/types';
 import {
@@ -40,7 +44,7 @@ import {
   vehicleCentre,
   type OrthoName,
 } from './views';
-import { MONO } from '../theme';
+import { CARD_SHADOW, MONO, PALETTE } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
 export const BACKGROUND = '#F8FAFB';
@@ -116,28 +120,94 @@ function PaneLabel({ name, rect }: { name: ViewName; rect: Rect }) {
 function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
   const maximized = useStore((s) => s.maximizedView === name);
   const toggleMaximized = useStore((s) => s.toggleMaximized);
+  const hintOpen = useStore((s) => s.paneHintOpen);
+  const dismissPaneHint = useStore((s) => s.dismissPaneHint);
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+
+  // The app opens on ISO alone, so the note belongs on the control that gets you out of it.
+  const showHint = hintOpen && maximized;
 
   return (
-    <Tooltip title={maximized ? 'Back to four views  (Esc)' : `Fill the viewport with ${name}`}>
-      <IconButton
-        size="small"
-        onClick={() => toggleMaximized(name)}
-        sx={{
-          position: 'absolute',
-          left: rect.x + rect.width - 34,
-          top: rect.y + 4,
-          color: 'secondary.main',
-          bgcolor: 'rgba(255,255,255,0.72)',
-          '&:hover': { bgcolor: 'rgba(255,255,255,0.95)' },
-        }}
+    <>
+      <Tooltip title={maximized ? 'Back to four views  (Esc)' : `Fill the viewport with ${name}`}>
+        <IconButton
+          size="small"
+          ref={setAnchor}
+          onClick={() => toggleMaximized(name)}
+          sx={{
+            position: 'absolute',
+            left: rect.x + rect.width - 34,
+            top: rect.y + 4,
+            color: showHint ? 'primary.main' : 'secondary.main',
+            bgcolor: 'rgba(255,255,255,0.72)',
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.95)' },
+            // A ring while the hint is up, so the sentence has something to point at.
+            ...(showHint && {
+              boxShadow: `0 0 0 3px ${PALETTE.sky}`,
+              bgcolor: 'background.paper',
+            }),
+          }}
+        >
+          {maximized ? (
+            <CloseFullscreenIcon sx={{ fontSize: 15 }} />
+          ) : (
+            <OpenInFullIcon sx={{ fontSize: 15 }} />
+          )}
+        </IconButton>
+      </Tooltip>
+
+      <Popper
+        open={showHint && Boolean(anchor)}
+        anchorEl={anchor}
+        placement="bottom-end"
+        transition
+        modifiers={[{ name: 'offset', options: { offset: [0, 10] } }]}
+        sx={{ zIndex: 5 }}
       >
-        {maximized ? (
-          <CloseFullscreenIcon sx={{ fontSize: 15 }} />
-        ) : (
-          <OpenInFullIcon sx={{ fontSize: 15 }} />
+        {({ TransitionProps }) => (
+          <Fade {...TransitionProps} timeout={220}>
+            <Paper
+              sx={{
+                position: 'relative',
+                maxWidth: 290,
+                p: 1.75,
+                border: 1,
+                borderColor: 'primary.main',
+                borderRadius: 2,
+                boxShadow: CARD_SHADOW,
+                // The pointer, drawn as a rotated corner of the card itself.
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: -7,
+                  right: 12,
+                  width: 12,
+                  height: 12,
+                  bgcolor: 'background.paper',
+                  borderTop: 1,
+                  borderLeft: 1,
+                  borderColor: 'primary.main',
+                  transform: 'rotate(45deg)',
+                },
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                You are looking at ISO alone
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Minimise it with this button to get all four views back — TOP, FRONT and LEFT
+                alongside it. Esc does the same.
+              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                <Button size="small" onClick={dismissPaneHint}>
+                  Got it
+                </Button>
+              </Box>
+            </Paper>
+          </Fade>
         )}
-      </IconButton>
-    </Tooltip>
+      </Popper>
+    </>
   );
 }
 
@@ -222,13 +292,19 @@ export default function Stage() {
 
       for (const name of VIEW_NAMES) {
         if (only && name !== only) continue;
-        // The maximised pane is a different size from the tiled one, and a fit has to frame the
-        // pane that is actually on screen.
-        const rect = viewportRects(
-          hostRef.current?.clientWidth ?? 0,
-          hostRef.current?.clientHeight ?? 0,
-          useStore.getState().maximizedView,
-        )[name];
+        /**
+         * The maximised pane is framed at its full size; the rest are framed at the size they
+         * will have when they come back. Framing them at the maximised layout's rects would hand
+         * them an empty rectangle and leave them unfitted the moment they reappear — which is
+         * exactly what happens on startup, where the app opens on ISO alone.
+         */
+        const width = hostRef.current?.clientWidth ?? 0;
+        const height = hostRef.current?.clientHeight ?? 0;
+        const maximized = useStore.getState().maximizedView;
+        const rect =
+          name === maximized
+            ? viewportRects(width, height, maximized)[name]
+            : viewportRects(width, height)[name];
         if (name === 'ISO') {
           next.ISO =
             fitIso(
@@ -284,27 +360,39 @@ export default function Stage() {
    * no say in it.
    */
   const savedView = useRef<{ name: ViewName; view: OrthoViewState | IsoViewState } | null>(null);
+  const opening = useRef(true);
 
   useEffect(() => {
     const previous = maximizedBefore.current;
     maximizedBefore.current = maximizedView;
-    if (previous === maximizedView) return;
+    const first = opening.current;
+    opening.current = false;
+    if (!first && previous === maximizedView) return;
 
     const store = useStore.getState();
 
-    if (previous && savedView.current?.name === previous) {
-      const saved = savedView.current.view;
-      if (previous === 'ISO') store.setIsoView(saved as IsoViewState);
-      else store.setOrthoView(previous, saved as OrthoViewState);
+    if (previous) {
+      if (savedView.current?.name === previous) {
+        const saved = savedView.current.view;
+        if (previous === 'ISO') store.setIsoView(saved as IsoViewState);
+        else store.setOrthoView(previous, saved as OrthoViewState);
+      } else {
+        // Nothing was put aside — the app opened maximised — so frame it for the pane it returns
+        // to rather than leaving it at the zoom the big pane wanted.
+        fitPanes(previous);
+      }
       savedView.current = null;
     }
 
     if (!maximizedView) return;
 
-    savedView.current =
-      maximizedView === 'ISO'
-        ? { name: 'ISO', view: { ...store.views.ISO } }
-        : { name: maximizedView, view: { ...store.views[maximizedView] } };
+    // The opening layout is where the app starts, not somewhere it was asked to come back to.
+    if (!first) {
+      savedView.current =
+        maximizedView === 'ISO'
+          ? { name: 'ISO', view: { ...store.views.ISO } }
+          : { name: maximizedView, view: { ...store.views[maximizedView] } };
+    }
     fitPanes(maximizedView);
   }, [maximizedView, fitPanes]);
 

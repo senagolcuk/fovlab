@@ -133,6 +133,14 @@ export interface AppState {
   views: ViewsState;
   /** The pane filling the whole viewport area, or null for the usual four-up tiling. */
   maximizedView: ViewName | null;
+  /**
+   * Whether the "there are three more views behind this one" hint is still showing.
+   *
+   * Session state rather than a preference: the app opens on ISO alone every time, so the note
+   * explaining how to get out of it belongs with that state rather than with the person.
+   */
+  paneHintOpen: boolean;
+  dismissPaneHint(): void;
 
   /** True while the ISO gizmo owns the pointer, so the pane must not also orbit. */
   gizmoDragging: boolean;
@@ -309,7 +317,9 @@ export const useStore = create<AppState>()((set, get) => ({
   blindReport: null,
   blindReportStale: true,
   views: DEFAULT_VIEWS,
-  maximizedView: null,
+  // Opens on ISO alone: one large view to look at before the four-up is asked for.
+  maximizedView: 'ISO',
+  paneHintOpen: true,
   gizmoDragging: false,
   fitNonce: 0,
   pendingDeleteId: null,
@@ -522,11 +532,16 @@ export const useStore = create<AppState>()((set, get) => ({
   },
 
   toggleMaximized(name) {
-    set((s) => ({ maximizedView: s.maximizedView === name ? null : name }));
+    // Using the control is the thing the hint was asking for, so it has done its job.
+    set((s) => ({ maximizedView: s.maximizedView === name ? null : name, paneHintOpen: false }));
   },
 
   restoreLayout() {
-    set({ maximizedView: null });
+    set({ maximizedView: null, paneHintOpen: false });
+  },
+
+  dismissPaneHint() {
+    set({ paneHintOpen: false });
   },
 
   requestFit() {

@@ -15,6 +15,7 @@ import ExportDialog from './ui/ExportDialog';
 import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
 import ZoomControls from './ui/ZoomControls';
+import { MONO } from './theme';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 
 const MIN_WIDTH = 1280;
@@ -68,6 +69,17 @@ export default function App() {
             }}
           >
             fovlab
+          </Typography>
+          {/*
+            Which way is which, always on screen. Every angle in the sidebar is signed against
+            these three, and an engineer reading a layout should never have to remember them or go
+            looking. The frame's name is not the useful half, so only the directions are given.
+          */}
+          <Typography
+            sx={{ fontFamily: MONO, fontSize: 12, color: 'text.secondary', whiteSpace: 'nowrap' }}
+            title="ISO 8855, right-handed. Origin on the ground at the centre of the footprint."
+          >
+            +X forward · +Y left · +Z up
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <FormControlLabel

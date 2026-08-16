@@ -343,6 +343,10 @@ so open it and click `Add sensor`.
 3. `Link zoom` on: scrolling in one pane scales all four by the same factor. Off: only that pane.
    Panning is always per-pane, in both modes.
 4. Drag in ISO to orbit; elevation stops at ±83°. Shift+drag pans instead.
+4a. The app opens on ISO alone, with a hint on the control that gets you out of it. The hint is
+    session state, not a preference: the opening layout is the same every time, so the note
+    explaining it belongs with that state. Using the button, pressing Esc or clicking `Got it` all
+    put it away.
 5. The button in a pane's top-right corner fills the viewport area with that pane; pressing it
    again, or `Esc`, brings the four back. Maximising **refits** that pane, which is the same thing
    `F` does — so the drawing arrives framed rather than merely enlarged, and nothing spills over
