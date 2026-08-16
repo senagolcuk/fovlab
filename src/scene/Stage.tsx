@@ -191,11 +191,9 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
                 },
               }}
             >
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                You are looking at ISO alone
-              </Typography>
+              {/* The pane names it, so "it" has something to point at without a heading. */}
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Minimise it with this button to get all four views back — TOP, FRONT and LEFT
+                Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
                 alongside it. Esc does the same.
               </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
