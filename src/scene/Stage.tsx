@@ -44,7 +44,7 @@ import {
   vehicleCentre,
   type OrthoName,
 } from './views';
-import { MONO, PALETTE } from '../theme';
+import { DISPLAY, MONO, PALETTE } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
 export const BACKGROUND = '#F8FAFB';
@@ -212,7 +212,16 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
                 },
               }}
             >
-              <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5 }}>
+              {/* The wordmark's face: this is the app talking, not another panel label. */}
+              <Typography
+                sx={{
+                  fontFamily: DISPLAY,
+                  fontSize: 14.5,
+                  fontWeight: 500,
+                  lineHeight: 1.55,
+                  color: 'text.primary',
+                }}
+              >
                 Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
                 alongside it. Esc does the same.
               </Typography>
@@ -221,7 +230,7 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
                   size="small"
                   variant="contained"
                   onClick={dismissPaneHint}
-                  sx={{ py: 0.25, px: 1.75 }}
+                  sx={{ py: 0.25, px: 1.75, fontFamily: DISPLAY, fontWeight: 600 }}
                 >
                   Got it
                 </Button>

@@ -15,7 +15,7 @@ import ExportDialog from './ui/ExportDialog';
 import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
 import ZoomControls from './ui/ZoomControls';
-import { MONO } from './theme';
+import { DISPLAY, MONO } from './theme';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 
 const MIN_WIDTH = 1280;
@@ -62,7 +62,7 @@ export default function App() {
             variant="h6"
             sx={{
               color: 'primary.main',
-              fontFamily: "'Prompt', sans-serif",
+              fontFamily: DISPLAY,
               fontWeight: 700,
               fontSize: '1.5rem',
               letterSpacing: 0.5,

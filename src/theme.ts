@@ -16,6 +16,12 @@ export const CONTROL_LABEL_SX = {
   whiteSpace: 'nowrap',
 } as const;
 
+/**
+ * The wordmark's face, borrowed by the occasional piece of copy that has to sound like the app
+ * speaking rather than like another panel label. Not the interface font: Roboto stays that.
+ */
+export const DISPLAY = "'Prompt', sans-serif";
+
 export const MONO = "'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 
 /**
