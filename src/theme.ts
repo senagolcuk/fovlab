@@ -3,6 +3,16 @@
 import { createTheme } from '@mui/material/styles';
 
 /**
+ * The structural face.
+ *
+ * Panel headings and the captions that name a control are set in it; running copy, form labels
+ * and every readout stay in Roboto. The split is by job rather than by size: this face names
+ * things, Roboto explains them. It is also the wordmark's, which is what makes a panel heading
+ * and the app's own name look related.
+ */
+export const DISPLAY = "'Prompt', sans-serif";
+
+/**
  * Width of the little caption that labels a segmented control — Shape, Drag, Range. Shared so the
  * three option groups start on the same x even though they live in different panels.
  */
@@ -12,15 +22,11 @@ export const CONTROL_LABEL_WIDTH = 58;
 export const CONTROL_LABEL_SX = {
   // Darker than the surrounding captions, but not bold — the weight read as shouting.
   color: 'text.primary',
+  fontFamily: DISPLAY,
+  fontWeight: 500,
   // Two-word labels have to stay on one line, or the column stops lining up.
   whiteSpace: 'nowrap',
 } as const;
-
-/**
- * The wordmark's face, borrowed by the occasional piece of copy that has to sound like the app
- * speaking rather than like another panel label. Not the interface font: Roboto stays that.
- */
-export const DISPLAY = "'Prompt', sans-serif";
 
 export const MONO = "'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
 

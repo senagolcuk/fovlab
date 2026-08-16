@@ -5,7 +5,7 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import Box from '@mui/material/Box';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Typography from '@mui/material/Typography';
-import { CARD_SHADOW, HEADER_TINT, MONO } from '../theme';
+import { CARD_SHADOW, DISPLAY, HEADER_TINT, MONO } from '../theme';
 
 /**
  * A collapsible sidebar section, drawn as its own card.
@@ -60,7 +60,8 @@ export function Panel({
             sx={{
               textTransform: 'uppercase',
               color: 'secondary.main',
-              fontWeight: 700,
+              fontFamily: DISPLAY,
+              fontWeight: 600,
               letterSpacing: 0.8,
               flexGrow: 1,
             }}

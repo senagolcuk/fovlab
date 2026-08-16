@@ -217,7 +217,9 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
                 sx={{
                   fontFamily: DISPLAY,
                   fontSize: 14.5,
-                  fontWeight: 500,
+                  // Light: the sidebar's headings and labels carry this face at 500 and 600, so
+                  // running copy in it has to sit below them or the card reads as a heading.
+                  fontWeight: 400,
                   lineHeight: 1.55,
                   color: 'text.primary',
                 }}
