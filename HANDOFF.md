@@ -376,6 +376,10 @@ so open it and click `Add sensor`.
 
 **Vehicle**
 
+8a. Look along a car's tail and a van's nose. Every section standing above the base must be tall
+    enough to read as a volume — a block only a few centimetres proud shows its floor and its roof
+    as two rings and the body looks double-walled. `profile.test.ts` holds the floor at 15% of the
+    height; the car's boot sits at bonnet level for exactly this reason.
 9. Switch `Shape` between Box, Rounded and Cylinder. The body redraws, and the blind-sector shading
    in TOP follows the outline — a cylinder gives a circular ring, not a rectangular one. Only the
    vertical edges round; the roof stays flat.

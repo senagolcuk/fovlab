@@ -73,6 +73,22 @@ describe('body blocks', () => {
     expect(tail).toBeLessThan(cabin);
   });
 
+  it('builds a car from two blocks, so no section is thin enough to read double-walled', () => {
+    const v = vehicle('car');
+    expect(bodyBlocks(v)).toHaveLength(2);
+    // Bonnet and boot are the same level, so the base carries both.
+    expect(bodyTopAt(2.2, v)).toBeCloseTo(bodyTopAt(-2.2, v), 9);
+    // Whatever the model, a block that does stand above the base is worth seeing.
+    for (const model of VEHICLE_MODELS) {
+      const vv = vehicle(model);
+      const [base, ...upper] = bodyBlocks(vv);
+      for (const b of upper) {
+        expect(b.top - b.bottom).toBeGreaterThan(0.15 * vv.height);
+      }
+      expect(base.top).toBeGreaterThan(base.bottom);
+    }
+  });
+
   it('gives a van a short bonnet and then full height all the way back', () => {
     const v = vehicle('van');
     expect(bodyTopAt(2.3, v)).toBeLessThan(bodyMaxTop(v));

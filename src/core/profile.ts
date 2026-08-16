@@ -39,11 +39,19 @@ export interface BodyBlock {
 const PROFILES: Record<VehicleModel, ReadonlyArray<readonly [number, number, number]>> = {
   /** One block the whole way: the shape the tool has always drawn, and still the default. */
   bus: [[0, 1, 1]],
-  /** Bonnet, cabin, boot. */
+  /**
+   * Bonnet, cabin, boot — with the boot at bonnet height rather than a little above it.
+   *
+   * A saloon's boot lid really does sit slightly proud of the beltline, and drawing that put a
+   * block barely a tenth of the body's height on top of the base. Its floor and its roof then read
+   * as two rings a few centimetres apart: the tail looked double-walled rather than stepped. At
+   * this level of abstraction the step earns nothing, so the boot is part of the base and the car
+   * is a clean two-level shape.
+   */
   car: [
     [0, 0.26, 0.5],
     [0.26, 0.72, 1],
-    [0.72, 1, 0.58],
+    [0.72, 1, 0.5],
   ],
   /** A short bonnet, then a box body the rest of the way. */
   van: [
