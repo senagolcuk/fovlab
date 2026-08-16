@@ -24,7 +24,8 @@ export interface BodyBlock {
   /** World X of the rear and front ends of this block. */
   minX: number;
   maxX: number;
-  /** World Z of its roof. The floor is the ground clearance, for every block. */
+  /** World Z of its floor and its roof. */
+  bottom: number;
   top: number;
 }
 
@@ -65,15 +66,25 @@ export function bodyBlocks(vehicle: Vehicle): BodyBlock[] {
   const sections = PROFILES[vehicle.model] ?? PROFILES.bus;
   const base = Math.min(...sections.map(([, , h]) => h));
 
+  const waist = vehicle.clearance + base * vehicle.height;
   const blocks: BodyBlock[] = [
-    { minX: -nose, maxX: nose, top: vehicle.clearance + base * vehicle.height },
+    { minX: -nose, maxX: nose, bottom: vehicle.clearance, top: waist },
   ];
 
+  /**
+   * The sections above the base start *at* it rather than at the ground.
+   *
+   * Overlapping instead, a cabin was a second solid standing inside the first: its fill doubled
+   * over the base, its vertical edges ran down through the body to the sills, and the base's roof
+   * line crossed it. Sitting on the waist, each upper block adds only what is actually above it,
+   * and the seam it leaves is the beltline a real body has anyway.
+   */
   for (const [from, to, h] of sections) {
     if (h <= base) continue;
     blocks.push({
       minX: nose - to * vehicle.length,
       maxX: nose - from * vehicle.length,
+      bottom: waist,
       top: vehicle.clearance + h * vehicle.height,
     });
   }
@@ -115,7 +126,7 @@ export function isInsideBlockPlan(p: Vec2, block: BodyBlock, vehicle: Vehicle): 
 export function isInsideBodySolid(p: Vec3, vehicle: Vehicle): boolean {
   return bodyBlocks(vehicle).some(
     (block) =>
-      p[2] >= vehicle.clearance &&
+      p[2] >= block.bottom &&
       p[2] <= block.top &&
       isInsideBlockPlan([p[0], p[1]], block, vehicle),
   );
@@ -129,6 +140,7 @@ export function isInsideBodySolid(p: Vec3, vehicle: Vehicle): boolean {
  */
 export function bodyTopAt(x: number, vehicle: Vehicle): number {
   let top = vehicle.clearance;
+  // Blocks stack, so the roofline is still the highest one covering this station.
   for (const b of bodyBlocks(vehicle)) {
     if (x >= b.minX && x <= b.maxX && b.top > top) top = b.top;
   }

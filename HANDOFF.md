@@ -135,6 +135,14 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
     blocks: a base running the whole length at the height of the lowest section, with the taller
     sections stacked on top. Proportions of the dimensions the engineer typed rather than metres.
 
+    The blocks sit *on* one another rather than overlapping: an upper section starts at the top
+    of the base, not at the ground. Overlapping, a cabin was a second solid standing inside the
+    first — its fill doubled over the base, its vertical edges ran down through the body to the
+    sills, and the base's roof line crossed it, so a car read as two ghosts stacked rather than one
+    body. The seam left where a block meets the one below is the beltline a real body has anyway.
+    The fill goes through `scene/UnionLayer.tsx`, the same stencil union the merged FOV uses, so
+    one solid shades once.
+
     Stacked, not laid end to end, and that is the load-bearing choice. Side by side, a block in
     the middle has two cut ends and no corners to round, so a rounded car came out with a
     sharp-cornered cabin sitting on a rounded chassis — and the snap, which had always rounded

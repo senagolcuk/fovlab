@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { roundedRectPolygon } from '../core/footprint';
 import { blockInnerExtents, bodyBlocks } from '../core/profile';
+import UnionLayer from './UnionLayer';
 import type { Vehicle } from '../core/types';
 
 const TYRE_WIDTH = 0.22;
@@ -33,7 +34,7 @@ export default function VehicleBody({
     const built: THREE.BufferGeometry[] = [];
 
     for (const block of bodyBlocks(vehicle)) {
-      const height = block.top - clearance;
+      const height = block.top - block.bottom;
       if (height <= 0) continue;
       const { minX, maxX, halfWidth, r } = blockInnerExtents(block, vehicle);
       const plan = roundedRectPolygon(minX, maxX, halfWidth, r);
@@ -41,8 +42,8 @@ export default function VehicleBody({
 
       const shape = new THREE.Shape(plan.map(([x, y]: [number, number]) => new THREE.Vector2(x, y)));
       const g = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
-      // Extrusion runs along +Z from z = 0, so the block starts at the ground clearance.
-      g.translate(0, 0, clearance);
+      // Extrusion runs along +Z from z = 0, so each block starts at its own floor.
+      g.translate(0, 0, block.bottom);
       built.push(g);
     }
 
@@ -51,6 +52,33 @@ export default function VehicleBody({
 
   /** 20°, so a rounded corner reads as an outline rather than as every facet of its arc. */
   const edges = useMemo(() => blocks.map((g) => new THREE.EdgesGeometry(g, 20)), [blocks]);
+
+  /**
+   * The blocks as one buffer, for a fill that paints each pixel once.
+   *
+   * Drawn as separate translucent meshes they compounded wherever one sat over another, so a car
+   * read as two ghosts stacked rather than one body. The blocks no longer overlap, but a body is
+   * one solid and should shade like one — including where the base's roof meets a cabin's floor.
+   */
+  const merged = useMemo(() => {
+    if (blocks.length === 1) return blocks[0];
+    const positions: number[] = [];
+    const indices: number[] = [];
+    for (const g of blocks) {
+      const offset = positions.length / 3;
+      const pos = g.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+      }
+      const index = g.getIndex();
+      if (index) for (let i = 0; i < index.count; i++) indices.push(index.getX(i) + offset);
+      else for (let i = 0; i < pos.count; i++) indices.push(i + offset);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.setIndex(indices);
+    return g;
+  }, [blocks]);
 
   const nose = useMemo(() => {
     const x0 = vehicle.length / 2 + 0.12;
@@ -66,6 +94,10 @@ export default function VehicleBody({
   }, [vehicle.length]);
 
   useEffect(() => () => blocks.forEach((g) => g.dispose()), [blocks]);
+  useEffect(() => () => {
+    // Only when it built one; a single block is handed straight through and disposed above.
+    if (merged !== blocks[0]) merged.dispose();
+  }, [merged, blocks]);
   useEffect(() => () => edges.forEach((g) => g.dispose()), [edges]);
   useEffect(() => () => nose.dispose(), [nose]);
 
@@ -82,17 +114,7 @@ export default function VehicleBody({
 
   return (
     <group>
-      {blocks.map((geometry, i) => (
-        <mesh key={i} geometry={geometry}>
-          <meshBasicMaterial
-            color="#C3D3DC"
-            transparent
-            opacity={0.35}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      ))}
+      <UnionLayer geometry={merged} color="#C3D3DC" opacity={0.35} renderOrder={0} clip={null} />
 
       {edges.map((geometry, i) => (
         <lineSegments key={i} geometry={geometry}>

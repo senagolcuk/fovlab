@@ -184,7 +184,7 @@ export function nearestSurfacePointRounded(p: Vec3, box: BodyBox, r: number): Su
 export function nearestOnBody(p: Vec3, vehicle: Vehicle): SurfacePoint {
   const blocks = bodyBlocks(vehicle);
   const boxes = blocks.map((b) => ({
-    min: [b.minX, -vehicle.width / 2, vehicle.clearance] as Vec3,
+    min: [b.minX, -vehicle.width / 2, b.bottom] as Vec3,
     max: [b.maxX, vehicle.width / 2, b.top] as Vec3,
   }));
 
@@ -193,11 +193,12 @@ export function nearestOnBody(p: Vec3, vehicle: Vehicle): SurfacePoint {
     blocks.some(
       (b, i) =>
         i !== exclude &&
-        q[2] > vehicle.clearance + 1e-9 &&
+        // `>=` on the floor, not `>`: blocks sit on one another, so the base's roof under a cabin
+        // is exactly the cabin's floor. Excluding it would let a sensor snap to a surface that is
+        // inside the body.
+        q[2] >= b.bottom - 1e-9 &&
         q[2] < b.top - 1e-9 &&
-        isInsideBlockPlan([q[0], q[1]], b, vehicle) &&
-        q[0] > b.minX + 1e-9 &&
-        q[0] < b.maxX - 1e-9,
+        isInsideBlockPlan([q[0], q[1]], b, vehicle),
     );
 
   let best: SurfacePoint | null = null;
