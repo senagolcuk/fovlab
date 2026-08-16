@@ -49,8 +49,14 @@ import { MONO, PALETTE } from '../theme';
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
 export const BACKGROUND = '#F8FAFB';
 
-/** How long the opening layout is left to itself before the pane hint appears. */
-const HINT_DELAY_MS = 5000;
+/**
+ * How long the opening layout is left to itself before the pane hint appears.
+ *
+ * Shorter than the pause you actually see: the timer only starts once React has mounted and the
+ * first frame is up, and on a cold load that is a second or two on its own. Five seconds here
+ * landed at about seven on screen.
+ */
+const HINT_DELAY_MS = 1000;
 
 /** The exporter reads pixels back off this host; kept here so both sides agree on the id. */
 export const STAGE_DOM_ID = 'fovlab-stage';
