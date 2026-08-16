@@ -138,7 +138,7 @@ export default function VehiclePanel() {
             onChange={(cornerRadius) => setVehicle({ cornerRadius })}
             helperText={
               vehicle.cornerRadius > radiusLimit
-                ? `Drawn at ${radiusLimit.toFixed(2)} m — half the shorter side`
+                ? `Drawn at ${radiusLimit.toFixed(2)} m: half the shorter side`
                 : undefined
             }
           />

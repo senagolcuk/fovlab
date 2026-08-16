@@ -122,8 +122,8 @@ export default function ExportDialog({ open, onClose }: { open: boolean; onClose
               </ToggleButtonGroup>
               <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.75 }}>
                 {dims
-                  ? `${dims.width} × ${dims.height} px — the pixel size of the saved file. Higher is sharper but larger.`
-                  : 'A multiplier over the on-screen size — higher is sharper but a larger file.'}
+                  ? `${dims.width} × ${dims.height} px: the pixel size of the saved file. Higher is sharper but larger.`
+                  : 'A multiplier over the on-screen size; higher is sharper but a larger file.'}
               </Typography>
             </Field>
 
@@ -131,7 +131,7 @@ export default function ExportDialog({ open, onClose }: { open: boolean; onClose
               {target === 'ALL'
                 ? 'Captures all four panes, including labels and dimensions.'
                 : `Captures the ${target} pane only.`}
-              {format === 'svg' && ' SVG is fully vector — every shape stays editable in Figma or Illustrator.'}
+              {format === 'svg' && ' SVG is fully vector: every shape stays editable in Figma or Illustrator.'}
             </Typography>
           </Box>
         </DialogContent>

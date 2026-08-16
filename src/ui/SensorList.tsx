@@ -181,7 +181,7 @@ export default function SensorList() {
       <Box sx={{ mx: -2 }}>
         {list.length === 0 ? (
           <Typography variant="body2" sx={{ color: 'text.secondary', px: 2, py: 1 }}>
-            No sensors yet — add one to begin.
+            No sensors yet. Add one to begin.
           </Typography>
         ) : (
           list.map((id) => (

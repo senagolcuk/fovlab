@@ -114,7 +114,7 @@ export default function DisplayPanel() {
       </Box>
       <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>
         {rangeMode === 'radial'
-          ? 'Every direction stops at the stated range — the footprint is a fan.'
+          ? 'Every direction stops at the stated range: the footprint is a fan.'
           : 'Measured along the optical axis, so the corners reach past the stated range.'}
       </Typography>
 
@@ -152,7 +152,7 @@ export default function DisplayPanel() {
       {display.mergeFovs && (
         <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 1 }}>
           Overlaps stop compounding and the coverage draws as one shape. Every sensor keeps its
-          own range — only the shading merges.
+          own range; only the shading merges.
         </Typography>
       )}
     </Panel>

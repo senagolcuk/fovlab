@@ -24,6 +24,13 @@ import CatalogPicker from './CatalogPicker';
 import NumberField from './NumberField';
 import { Readout } from './Panel';
 
+/**
+ * Shown for a readout that has no answer rather than a zero one, which happens only when the
+ * volume never reaches the ground. A word rather than a dash: a lone dash in a column of numbers
+ * reads as a minus sign for as long as it takes to look twice.
+ */
+const NO_VALUE = 'n/a';
+
 function ColorSwatch({ color, size = 18 }: { color: string; size?: number }) {
   return (
     <Box
@@ -229,7 +236,7 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           value={
             coverage.extentX
               ? `${fmt(coverage.extentX[0])} … ${fmt(coverage.extentX[1])} m`
-              : '—'
+              : NO_VALUE
           }
         />
         <Readout
@@ -237,12 +244,12 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           value={
             coverage.extentY
               ? `${fmt(coverage.extentY[0])} … ${fmt(coverage.extentY[1])} m`
-              : '—'
+              : NO_VALUE
           }
         />
         <Readout
           label="Blind gap to body"
-          value={coverage.blindGap === null ? '—' : `${fmt(coverage.blindGap)} m`}
+          value={coverage.blindGap === null ? NO_VALUE : `${fmt(coverage.blindGap)} m`}
           color={coverage.blindGap && coverage.blindGap > 0.5 ? 'warning.main' : undefined}
         />
       </Box>
