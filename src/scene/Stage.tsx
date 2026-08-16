@@ -170,45 +170,54 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
             <Paper
               sx={{
                 position: 'relative',
-                maxWidth: 320,
-                p: 2,
-                // Filled rather than outlined. It has to be seen over a busy 3D view, and a solid
-                // card has no border for the pointer to line up with — which is what left a notch
-                // at the corner when this was a white card with an arrow drawn on its edge.
-                bgcolor: 'primary.main',
-                color: '#FFFFFF',
-                borderRadius: 2,
-                boxShadow: '0 6px 20px rgba(30, 121, 211, 0.34)',
+                maxWidth: 330,
+                p: 1.75,
+                borderRadius: 1.5,
+                // No border. A border is a line the pointer has to meet exactly, and at a rounded
+                // corner it cannot — which is what left a notch here twice. The shadow gives the
+                // card its edge instead, and the pointer is simply more of the same paper.
+                boxShadow: '0 8px 26px rgba(22, 32, 46, 0.22)',
                 '&::before': {
                   content: '""',
                   position: 'absolute',
                   top: -6,
-                  right: 14,
+                  // Clear of the corner radius, so the pointer sits on the straight run of the edge.
+                  right: 24,
                   width: 14,
                   height: 14,
-                  bgcolor: 'primary.main',
+                  bgcolor: 'background.paper',
                   transform: 'rotate(45deg)',
                   borderRadius: '3px 0 0 0',
                 },
               }}
             >
               <Box sx={{ display: 'flex', gap: 1.25 }}>
-                <GridViewOutlinedIcon sx={{ fontSize: 20, mt: 0.15, opacity: 0.9 }} />
-                <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+                {/* The colour arrives as a mark rather than as a field behind the words. */}
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    flexShrink: 0,
+                    borderRadius: 1,
+                    bgcolor: 'primary.main',
+                    color: '#FFFFFF',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <GridViewOutlinedIcon sx={{ fontSize: 17 }} />
+                </Box>
+                <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5 }}>
                   Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
                   alongside it. Esc does the same.
                 </Typography>
               </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                 <Button
                   size="small"
+                  variant="contained"
                   onClick={dismissPaneHint}
-                  sx={{
-                    py: 0.25,
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
-                  }}
+                  sx={{ py: 0.25, px: 1.75 }}
                 >
                   Got it
                 </Button>
