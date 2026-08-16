@@ -192,12 +192,13 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
               }}
             >
               {/* The pane names it, so "it" has something to point at without a heading. */}
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {/* A notice rather than helper text, so it carries the darker of the two greys. */}
+              <Typography variant="body2" sx={{ color: 'secondary.dark' }}>
                 Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
                 alongside it. Esc does the same.
               </Typography>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                <Button size="small" onClick={dismissPaneHint}>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25 }}>
+                <Button size="small" sx={{ py: 0.25 }} onClick={dismissPaneHint}>
                   Got it
                 </Button>
               </Box>
