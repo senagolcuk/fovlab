@@ -13,6 +13,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
+import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import Button from '@mui/material/Button';
 import Fade from '@mui/material/Fade';
@@ -44,7 +45,7 @@ import {
   vehicleCentre,
   type OrthoName,
 } from './views';
-import { CARD_SHADOW, MONO, PALETTE } from '../theme';
+import { MONO, PALETTE } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
 export const BACKGROUND = '#F8FAFB';
@@ -161,7 +162,7 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
         anchorEl={anchor}
         placement="bottom-end"
         transition
-        modifiers={[{ name: 'offset', options: { offset: [0, 10] } }]}
+        modifiers={[{ name: 'offset', options: { offset: [0, 12] } }]}
         sx={{ zIndex: 5 }}
       >
         {({ TransitionProps }) => (
@@ -169,36 +170,46 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
             <Paper
               sx={{
                 position: 'relative',
-                maxWidth: 290,
-                p: 1.75,
-                border: 1,
-                borderColor: 'primary.main',
+                maxWidth: 320,
+                p: 2,
+                // Filled rather than outlined. It has to be seen over a busy 3D view, and a solid
+                // card has no border for the pointer to line up with — which is what left a notch
+                // at the corner when this was a white card with an arrow drawn on its edge.
+                bgcolor: 'primary.main',
+                color: '#FFFFFF',
                 borderRadius: 2,
-                boxShadow: CARD_SHADOW,
-                // The pointer, drawn as a rotated corner of the card itself.
+                boxShadow: '0 6px 20px rgba(30, 121, 211, 0.34)',
                 '&::before': {
                   content: '""',
                   position: 'absolute',
-                  top: -7,
-                  right: 12,
-                  width: 12,
-                  height: 12,
-                  bgcolor: 'background.paper',
-                  borderTop: 1,
-                  borderLeft: 1,
-                  borderColor: 'primary.main',
+                  top: -6,
+                  right: 14,
+                  width: 14,
+                  height: 14,
+                  bgcolor: 'primary.main',
                   transform: 'rotate(45deg)',
+                  borderRadius: '3px 0 0 0',
                 },
               }}
             >
-              {/* The pane names it, so "it" has something to point at without a heading. */}
-              {/* A notice rather than helper text, so it carries the darker of the two greys. */}
-              <Typography variant="body2" sx={{ color: 'secondary.dark' }}>
-                Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
-                alongside it. Esc does the same.
-              </Typography>
+              <Box sx={{ display: 'flex', gap: 1.25 }}>
+                <GridViewOutlinedIcon sx={{ fontSize: 20, mt: 0.15, opacity: 0.9 }} />
+                <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
+                  Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
+                  alongside it. Esc does the same.
+                </Typography>
+              </Box>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25 }}>
-                <Button size="small" sx={{ py: 0.25 }} onClick={dismissPaneHint}>
+                <Button
+                  size="small"
+                  onClick={dismissPaneHint}
+                  sx={{
+                    py: 0.25,
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                  }}
+                >
                   Got it
                 </Button>
               </Box>

@@ -162,9 +162,19 @@ export function projectToIsoPane(
 /* ------------------------------------------------------------------------ scene bounds */
 
 /**
- * Every point that must stay on screen: the vehicle box, plus each visible sensor's frustum
- * and its ground footprint. Fitting to the frustum corners alone would clip a footprint that
- * runs past the far plane's projection.
+ * How much room a fit leaves around the vehicle when there is nothing else to frame.
+ *
+ * An empty layout has only the body to fit, and a tight fit then fills the pane with it — the
+ * opening screen showed a car and no ground at all. Framing a box this much larger keeps some
+ * context under it. Once a sensor is mounted its coverage is far bigger than this, so the figure
+ * stops mattering the moment it would.
+ */
+export const MIN_CONTEXT = 1.6;
+
+/**
+ * Every point that must stay on screen: the vehicle box and a little ground around it, plus each
+ * visible sensor's frustum and its ground footprint. Fitting to the frustum corners alone would
+ * clip a footprint that runs past the far plane's projection.
  */
 export function sceneBounds(
   vehicle: Vehicle,
@@ -179,6 +189,9 @@ export function sceneBounds(
   for (const sx of [-hl, hl]) {
     for (const sy of [-hw, hw]) {
       points.push([sx, sy, 0], [sx, sy, top]);
+      // The context box, centred on the body rather than on the origin.
+      points.push([sx * MIN_CONTEXT, sy * MIN_CONTEXT, 0]);
+      points.push([sx * MIN_CONTEXT, sy * MIN_CONTEXT, top * MIN_CONTEXT]);
     }
   }
 

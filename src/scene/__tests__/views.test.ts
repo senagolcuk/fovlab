@@ -12,6 +12,7 @@ import {
   panForPoint,
   orthoWorldToPane,
   projectToIsoPane,
+  MIN_CONTEXT,
   sceneBounds,
   vehicleCentre,
 } from '../views';
@@ -344,10 +345,29 @@ describe('projection', () => {
 });
 
 describe('sceneBounds', () => {
-  it('includes the vehicle box even with no sensors', () => {
+  it('frames the vehicle plus some ground when there are no sensors', () => {
     const points = sceneBounds(vehicle, [], []);
-    expect(points).toHaveLength(8);
-    expect(Math.max(...points.map((p) => p[2]))).toBeCloseTo(1.7, 9);
+    // The body's own eight corners, and a context box around them.
+    expect(points).toHaveLength(16);
+    expect(Math.max(...points.map((p) => p[2]))).toBeCloseTo(1.7 * MIN_CONTEXT, 9);
+    // Wide enough that an empty layout does not fill the pane with bodywork.
+    expect(Math.max(...points.map((p) => p[0]))).toBeCloseTo((vehicle.length / 2) * MIN_CONTEXT, 9);
+  });
+
+  it('lets real coverage swamp the context box rather than being held back by it', () => {
+    const far: SensorInstance = {
+      id: 'a',
+      name: 'A',
+      specId: null,
+      custom: { hfov: 60, vfov: 40, range: 60 },
+      color: '#6750A4',
+      visible: true,
+      pose: { x: 2.4, y: 0, z: 0.6, yaw: 0, pitch: -3, roll: 0 },
+    };
+    const points = sceneBounds(vehicle, [far], []);
+    expect(Math.max(...points.map((p) => p[0]))).toBeGreaterThan(
+      (vehicle.length / 2) * MIN_CONTEXT * 3,
+    );
   });
 
   it('includes the ground footprint, which can reach past the frustum corners', () => {
@@ -375,7 +395,7 @@ describe('sceneBounds', () => {
       visible: false,
       pose: { x: 0, y: 0, z: 1, yaw: 0, pitch: 0, roll: 0 },
     };
-    expect(sceneBounds(vehicle, [hidden], [])).toHaveLength(8);
+    expect(sceneBounds(vehicle, [hidden], [])).toEqual(sceneBounds(vehicle, [], []));
   });
 })
 
