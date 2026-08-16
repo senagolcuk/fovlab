@@ -13,7 +13,6 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { VIEW_NAMES, viewportRects, type ViewName } from '../core/viewport';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
-import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import Button from '@mui/material/Button';
 import Fade from '@mui/material/Fade';
@@ -49,6 +48,9 @@ import { MONO, PALETTE } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
 export const BACKGROUND = '#F8FAFB';
+
+/** How long the opening layout is left to itself before the pane hint appears. */
+const HINT_DELAY_MS = 5000;
 
 /** The exporter reads pixels back off this host; kept here so both sides agree on the id. */
 export const STAGE_DOM_ID = 'fovlab-stage';
@@ -125,8 +127,21 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
   const dismissPaneHint = useStore((s) => s.dismissPaneHint);
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
+  /**
+   * Held back for a moment after the app opens.
+   *
+   * Arriving with the first frame, the card is one more thing appearing at once and reads as
+   * chrome. Coming in after the layout has settled, it reads as something the app is telling you.
+   * Restoring the layout before it appears cancels it — whoever found the button already knows.
+   */
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setWaited(true), HINT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
   // The app opens on ISO alone, so the note belongs on the control that gets you out of it.
-  const showHint = hintOpen && maximized;
+  const showHint = waited && hintOpen && maximized;
 
   return (
     <>
@@ -191,27 +206,10 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
                 },
               }}
             >
-              <Box sx={{ display: 'flex', gap: 1.25 }}>
-                {/* The colour arrives as a mark rather than as a field behind the words. */}
-                <Box
-                  sx={{
-                    width: 28,
-                    height: 28,
-                    flexShrink: 0,
-                    borderRadius: 1,
-                    bgcolor: 'primary.main',
-                    color: '#FFFFFF',
-                    display: 'grid',
-                    placeItems: 'center',
-                  }}
-                >
-                  <GridViewOutlinedIcon sx={{ fontSize: 17 }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5 }}>
-                  Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
-                  alongside it. Esc does the same.
-                </Typography>
-              </Box>
+              <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5 }}>
+                Minimise ISO with this button to get all four views back: TOP, FRONT and LEFT
+                alongside it. Esc does the same.
+              </Typography>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                 <Button
                   size="small"
