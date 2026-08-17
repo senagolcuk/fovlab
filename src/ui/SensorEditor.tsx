@@ -76,13 +76,6 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
 
   const fmt = (v: number, digits = 2) => v.toFixed(digits);
 
-  /**
-   * At 180° and wider there is no image rectangle and no flat far plane, so the field is swept by
-   * angle and drawn radially whatever the range mode says. The figure itself is drawn as typed;
-   * what changes is the model behind it, so name that rather than leave the picture unexplained.
-   */
-  const clampNote = (value: number) => (value >= 180 ? 'swept by angle' : undefined);
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>
       <CatalogPicker sensor={sensor} />
@@ -197,7 +190,6 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           value={spec.hfov}
           min={FOV_MIN}
           max={Math.max(FOV_INPUT_MAX, spec.hfov)}
-          helperText={clampNote(spec.hfov)}
           inherited={inherited && sensor.override?.hfov === undefined}
           onChange={(hfov) => setFov({ hfov })}
         />
@@ -208,7 +200,6 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
           value={spec.vfov}
           min={FOV_MIN}
           max={Math.max(FOV_INPUT_MAX, spec.vfov)}
-          helperText={clampNote(spec.vfov)}
           inherited={inherited && sensor.override?.vfov === undefined}
           onChange={(vfov) => setFov({ vfov })}
         />
