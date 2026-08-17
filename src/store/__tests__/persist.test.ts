@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOV_MAX, RANGE_MIN } from '../../core/frustum';
+import { HFOV_MAX, RANGE_MIN } from '../../core/frustum';
 import { DEFAULT_VEHICLE, LIMITS, sanitizeLayout, sanitizeVehicle, wrapAngle } from '../persist';
 
 const validSensor = {
@@ -51,7 +51,7 @@ describe('sanitizeLayout', () => {
       ],
     })!;
     const s = l.sensors[0];
-    expect(s.custom).toEqual({ hfov: FOV_MAX, vfov: 0.2, range: RANGE_MIN });
+    expect(s.custom).toEqual({ hfov: HFOV_MAX, vfov: 0.2, range: RANGE_MIN });
     expect(s.pose.x).toBe(LIMITS.x[1]);
     expect(s.pose.yaw).toBe(30);
     expect(s.pose.pitch).toBe(-90);

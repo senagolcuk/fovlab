@@ -15,7 +15,7 @@ import Menu from '@mui/material/Menu';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { effectiveSpec } from '../core/catalog';
-import { FOV_INPUT_MAX, FOV_MAX, FOV_MIN, RANGE_MIN, frustum } from '../core/frustum';
+import { FOV_INPUT_MAX, FOV_MIN, RANGE_MIN, frustum } from '../core/frustum';
 import { groundCoverage, isInsideBody } from '../core/ground';
 import type { SensorInstance } from '../core/types';
 import { LIMITS } from '../store/persist';
@@ -77,11 +77,11 @@ export default function SensorEditor({ sensor }: { sensor: SensorInstance }) {
   const fmt = (v: number, digits = 2) => v.toFixed(digits);
 
   /**
-   * A catalogue entry holds the datasheet figure even when it is wider than the pyramid model
-   * can represent. Say so on the field rather than quietly showing a different number.
+   * At 180° and wider there is no image rectangle and no flat far plane, so the field is swept by
+   * angle and drawn radially whatever the range mode says. The figure itself is drawn as typed;
+   * what changes is the model behind it, so name that rather than leave the picture unexplained.
    */
-  const clampNote = (value: number) =>
-    value > FOV_MAX ? `drawn at ${FOV_MAX}°` : undefined;
+  const clampNote = (value: number) => (value >= 180 ? 'swept by angle' : undefined);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, py: 1 }}>

@@ -60,6 +60,36 @@ datasheet says and the footprint reads as a fan. **The lateral faces are identic
 — fixing `u = ±1` still spans a plane — which is why every acceptance test about the near edge
 holds unchanged.
 
+### Fields of 180° and wider
+
+The rectangular cone above is the set of directions a flat image rectangle subtends, and it is
+only defined below 180°: its half-width is `tan(hfov/2)`. That is not an arithmetic inconvenience
+to be clamped away. No flat rectangle subtends a reflex angle, so a 190° fisheye is not a
+rectangular cone that has been cut short, it is a different shape.
+
+At 180° and above the directions are therefore swept by angle. With azimuth `α` over
+`[−hfov/2, +hfov/2]` and elevation `β` over `[−vfov/2, +vfov/2]`:
+
+```
+d = ( cos β · cos α,  cos β · sin α,  sin β )
+```
+
+No tangent, so every angle up to a full turn is expressible, and the quoted figure is what gets
+drawn. Fixing `α` still spans a plane, so the sides stay flat; fixing `β` spans a cone rather than
+a plane, so the top and bottom of the field are curved. That is the honest shape — a lens that
+sees 95° off-axis does not do so along a straight edge.
+
+Two consequences worth stating:
+
+- **`axis` does not apply.** A flat plane at `range` along the boresight is unreachable for any
+  direction more than 90° off it. A wide field is drawn radially whichever mode is set.
+- **The split is at exactly 180°**, where the rectilinear model stops existing rather than merely
+  straining. It strains well before: a 170° lens has `ty = 11.4`, so its top corners sit 2.9°
+  above the horizon instead of `vfov/2`. A figure below 180° is still taken at face value as a
+  rectilinear field, because that is what every ordinary camera and every acceptance test assumes.
+  Distinguishing a 170° fisheye from a 170° rectilinear lens needs a projection model recorded per
+  sensor, which the catalogue does not yet carry.
+
 The cap is tessellated (12 × 6) so the solid stays a convex polyhedron and the ground section
 below needs no new algorithm; the far edge of the footprint comes out as a fine polyline rather
 than a true arc. The wireframe draws `Frustum.outline` — the rim and four spokes — rather than
@@ -79,8 +109,10 @@ frame are:
 
 World position of each corner = `sensorPosition + R · localCorner`.
 
-Clamp `hfov` and `vfov` to the range `[0.2°, 179.4°]` so the tangent stays finite. Clamp `range`
-to at least 0.05 m.
+Clamp `hfov` and `vfov` to `[0.2°, 179.4°]` here so the tangent stays finite — this is the
+rectilinear model, and 179.4° is the widest one exists. The angular sweep has no such ceiling and
+is clamped only at `hfov ≤ 360°`, `vfov ≤ 180°`, where the patch would start covering ground it
+has already covered. Clamp `range` to at least 0.05 m.
 
 The pyramid has 5 vertices — apex plus 4 far corners — and 8 edges:
 

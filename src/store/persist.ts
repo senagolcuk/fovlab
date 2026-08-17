@@ -6,7 +6,7 @@
  */
 
 import { parseCatalog } from '../core/catalog';
-import { clampFov, clampRange } from '../core/frustum';
+import { clampFov, clampRange, VFOV_MAX } from '../core/frustum';
 import { VEHICLE_MODELS } from '../core/profile';
 import { clamp } from '../core/rotation';
 import type {
@@ -126,7 +126,7 @@ function sanitizeFov(raw: unknown): FovSpec | undefined {
   }
   return {
     hfov: clampFov(num(f.hfov, 90)),
-    vfov: clampFov(num(f.vfov, 60)),
+    vfov: clampFov(num(f.vfov, 60), VFOV_MAX),
     range: clampRange(num(f.range, 10)),
   };
 }
@@ -136,7 +136,7 @@ function sanitizeOverride(raw: unknown): Partial<FovSpec> | undefined {
   const f = raw as Record<string, unknown>;
   const out: Partial<FovSpec> = {};
   if (typeof f.hfov === 'number') out.hfov = clampFov(f.hfov);
-  if (typeof f.vfov === 'number') out.vfov = clampFov(f.vfov);
+  if (typeof f.vfov === 'number') out.vfov = clampFov(f.vfov, VFOV_MAX);
   if (typeof f.range === 'number') out.range = clampRange(f.range);
   return Object.keys(out).length ? out : undefined;
 }

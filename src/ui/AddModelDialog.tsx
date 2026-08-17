@@ -18,7 +18,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { SUGGESTED_KINDS } from '../core/catalog';
-import { FOV_MAX, FOV_MIN, RANGE_MIN } from '../core/frustum';
+import { FOV_MIN, RANGE_MIN } from '../core/frustum';
 import type { SensorSpec } from '../core/types';
 import { useStore } from '../store/useStore';
 import NumberField from './NumberField';
@@ -81,7 +81,7 @@ export default function AddModelDialog({
     onClose();
   };
 
-  const tooWide = hfov > FOV_MAX || vfov > FOV_MAX;
+  const wide = hfov >= 180 || vfov >= 180;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -148,10 +148,10 @@ export default function AddModelDialog({
             />
           </Box>
 
-          {tooWide && (
-            <Typography variant="caption" sx={{ color: 'warning.dark' }}>
-              Kept at the figure you typed; drawn at {FOV_MAX}°, which is the widest a flat far
-              plane can represent.
+          {wide && (
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Drawn at the figure you typed, swept by angle: no flat image rectangle subtends 180°
+              or more, so the far edge is radial whichever range mode is set.
             </Typography>
           )}
 

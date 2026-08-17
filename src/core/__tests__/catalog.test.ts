@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FOV, describeFov, effectiveSpec, isInherited, parseCatalog } from '../catalog';
-import { clampFov, clampRange, clampSpec, FOV_MAX, FOV_MIN, RANGE_MIN } from '../frustum';
+import {
+  AXIS_FOV_MAX,
+  clampFov,
+  clampRange,
+  clampSpec,
+  FOV_MIN,
+  HFOV_MAX,
+  localFarCorners,
+  RANGE_MIN,
+} from '../frustum';
 import type { SensorInstance, SensorSpec } from '../types';
 import shippedCatalog from '../../data/sensors.json';
 
@@ -63,8 +72,10 @@ describe('spec resolution', () => {
 });
 
 describe('clamping', () => {
-  it('keeps tan(fov/2) finite', () => {
-    expect(clampFov(180)).toBe(FOV_MAX);
+  it('allows any real field, since the angular sweep has no tangent to keep finite', () => {
+    expect(clampFov(180)).toBe(180);
+    expect(clampFov(190)).toBe(190);
+    expect(clampFov(400)).toBe(HFOV_MAX);
     expect(clampFov(0)).toBe(FOV_MIN);
     expect(clampFov(-10)).toBe(FOV_MIN);
     expect(clampFov(Number.NaN)).toBe(FOV_MIN);
@@ -128,10 +139,15 @@ describe('the shipped catalogue file', () => {
     expect(isx.map((s) => s.hfov)).toEqual([60, 120, 190]);
   });
 
-  it('keeps the 190° lens at its datasheet figure and clamps only at render', () => {
+  it('draws the 190° lens at its datasheet figure, not at a clamped stand-in', () => {
     const spec = specs.find((s) => s.id === 'sensing-world-isx031-190')!;
     expect(spec.hfov).toBe(190); // what the engineer looked up
-    expect(clampSpec(spec).hfov).toBe(FOV_MAX); // what a flat far plane can represent
+    expect(clampSpec(spec).hfov).toBe(190); // and what gets swept
+    // The rectilinear corners are the one thing that cannot follow it there.
+    expect(localFarCorners(spec)[0][1]).toBeCloseTo(
+      Math.tan((AXIS_FOV_MAX / 2) * (Math.PI / 180)) * spec.range,
+      6,
+    );
   });
 
   it('ships every generic entry verified, since they are definitional', () => {
