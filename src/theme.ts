@@ -3,14 +3,12 @@
 import { createTheme } from '@mui/material/styles';
 
 /**
- * The structural face.
+ * The interface face, for anywhere that needs to name it explicitly rather than inherit it.
  *
- * Panel headings and the captions that name a control are set in it; running copy, form labels
- * and every readout stay in Roboto. The split is by job rather than by size: this face names
- * things, Roboto explains them. It is also the wordmark's, which is what makes a panel heading
- * and the app's own name look related.
+ * The theme sets this as the default, so almost nothing should reach for it: everything is in it
+ * already. The exception is the numbers, which are deliberately not — see `MONO`.
  */
-export const DISPLAY = "'Prompt', sans-serif";
+export const DISPLAY = "'Prompt', Roboto, 'Helvetica Neue', Arial, sans-serif";
 
 /**
  * Width of the little caption that labels a segmented control — Shape, Drag, Range. Shared so the
@@ -22,7 +20,6 @@ export const CONTROL_LABEL_WIDTH = 58;
 export const CONTROL_LABEL_SX = {
   // Darker than the surrounding captions, but not bold — the weight read as shouting.
   color: 'text.primary',
-  fontFamily: DISPLAY,
   fontWeight: 500,
   // Two-word labels have to stay on one line, or the column stops lining up.
   whiteSpace: 'nowrap',
@@ -63,7 +60,7 @@ export const theme = createTheme({
   },
   shape: { borderRadius: 12 },
   typography: {
-    fontFamily: "Roboto, 'Helvetica Neue', Arial, sans-serif",
+    fontFamily: "'Prompt', Roboto, 'Helvetica Neue', Arial, sans-serif",
     h6: { fontSize: '1rem', fontWeight: 500, letterSpacing: 0.15 },
     subtitle2: { fontSize: '0.75rem', fontWeight: 500, letterSpacing: 0.5 },
     button: { textTransform: 'none', fontWeight: 500, letterSpacing: 0.1 },

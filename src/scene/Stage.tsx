@@ -44,7 +44,7 @@ import {
   vehicleCentre,
   type OrthoName,
 } from './views';
-import { DISPLAY, MONO, PALETTE } from '../theme';
+import { MONO, PALETTE } from '../theme';
 
 /** A shade cooler and lighter than the sidebar, so the viewport reads as its own surface. */
 export const BACKGROUND = '#F8FAFB';
@@ -215,7 +215,6 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
               {/* The wordmark's face: this is the app talking, not another panel label. */}
               <Typography
                 sx={{
-                  fontFamily: DISPLAY,
                   fontSize: 14.5,
                   // Light: the sidebar's headings and labels carry this face at 500 and 600, so
                   // running copy in it has to sit below them or the card reads as a heading.
@@ -232,7 +231,7 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
                   size="small"
                   variant="contained"
                   onClick={dismissPaneHint}
-                  sx={{ py: 0.25, px: 1.75, fontFamily: DISPLAY, fontWeight: 600 }}
+                  sx={{ py: 0.25, px: 1.75, fontWeight: 600 }}
                 >
                   Got it
                 </Button>

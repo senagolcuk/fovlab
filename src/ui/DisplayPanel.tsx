@@ -30,6 +30,12 @@ export default function DisplayPanel() {
 
   const { fineHalf, majorStep, coarseHalf } = gridExtents(display.gridSize);
 
+  /**
+   * Trailing zeros are noise on a figure nobody types: these are the grid's reach, not a
+   * measurement. Dropping them also keeps the line on one row, which two decimals did not.
+   */
+  const trim = (v: number) => String(Math.round(v * 100) / 100);
+
   return (
     <Panel title="Display">
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -61,7 +67,7 @@ export default function DisplayPanel() {
       </Box>
 
       <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 1 }}>
-        {`fine to ${fineHalf.toFixed(2)} m · heavy line every ${majorStep.toFixed(2)} m · out to ${coarseHalf.toFixed(0)} m`}
+        {`fine to ${trim(fineHalf)} m · heavy every ${trim(majorStep)} m · out to ${trim(coarseHalf)} m`}
       </Typography>
 
       <Box sx={{ mt: 2 }}>
