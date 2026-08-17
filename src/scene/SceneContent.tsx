@@ -4,6 +4,7 @@ import BlindSectors from './BlindSectors';
 import GroundGrid from './GroundGrid';
 import MergedFov from './MergedFov';
 import SensorFov from './SensorFov';
+import PlanMask from './PlanMask';
 import VehicleBody from './Vehicle';
 
 /**
@@ -37,7 +38,13 @@ export default function SceneContent({ blindSectors = false }: { blindSectors?: 
           visible={blindSectors && display.blindSectors}
         />
       )}
-      {display.vehicle && <VehicleBody vehicle={vehicle} wheels={display.wheels} />}
+      {display.vehicle && (
+        <>
+          <VehicleBody vehicle={vehicle} wheels={display.wheels} />
+          {/* TOP only; see PlanMask. */}
+          <PlanMask vehicle={vehicle} />
+        </>
+      )}
       {display.mergeFovs && (
         <MergedFov
           sensors={sensors}

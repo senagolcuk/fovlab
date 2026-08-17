@@ -34,6 +34,12 @@ export const LAYER = {
    * own marks, which are drawn afterwards and read through it.
    */
   VEHICLE_BODY: 50,
+  /**
+   * After the body, and this order is load-bearing. Both are opaque, and three sorts the opaque
+   * pass by `renderOrder` before distance — without it the column, whose top is 400 m up, would
+   * be nearer than the roof and would mask out the very body it exists to extend.
+   */
+  VEHICLE_PLAN_MASK: 55,
   VEHICLE_WHEELS: 60,
   VEHICLE_EDGES: 70,
 
