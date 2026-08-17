@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { roundedRectPolygon } from '../core/footprint';
 import { blockInnerExtents, bodyBlocks } from '../core/profile';
+import { LAYER } from './layers';
 import UnionLayer from './UnionLayer';
 import type { Vehicle } from '../core/types';
 
@@ -114,25 +115,42 @@ export default function VehicleBody({
 
   return (
     <group>
-      <UnionLayer geometry={merged} color="#C3D3DC" opacity={0.35} renderOrder={0} clip={null} />
+      {/*
+        Every piece here is `transparent`, the wheels for their own sake and the rest only to join
+        the same render list. A material without it goes in the depth-tested pass, which three
+        draws before all translucent geometry — the edges and the nose would sink under the very
+        volumes this layering exists to keep them above, whatever their `renderOrder` said.
+      */}
+      {wheels &&
+        wheelPositions.map(([x, y]) => (
+          <mesh key={`${x},${y}`} position={[x, y, wheelRadius]} renderOrder={LAYER.VEHICLE_WHEELS}>
+            <cylinderGeometry args={[wheelRadius, wheelRadius, TYRE_WIDTH, 24]} />
+            <meshBasicMaterial color="#495F81" transparent opacity={0.55} depthWrite={false} />
+          </mesh>
+        ))}
+
+      <UnionLayer
+        geometry={merged}
+        color="#C3D3DC"
+        opacity={0.35}
+        renderOrder={LAYER.VEHICLE_BODY}
+        clip={null}
+      />
 
       {edges.map((geometry, i) => (
-        <lineSegments key={i} geometry={geometry}>
-          <lineBasicMaterial color="#495F81" />
+        <lineSegments key={i} geometry={geometry} renderOrder={LAYER.VEHICLE_EDGES}>
+          <lineBasicMaterial color="#495F81" transparent depthWrite={false} />
         </lineSegments>
       ))}
 
-      <mesh geometry={nose}>
-        <meshBasicMaterial color="#1E79D3" side={THREE.DoubleSide} depthWrite={false} />
+      <mesh geometry={nose} renderOrder={LAYER.VEHICLE_EDGES}>
+        <meshBasicMaterial
+          color="#1E79D3"
+          side={THREE.DoubleSide}
+          transparent
+          depthWrite={false}
+        />
       </mesh>
-
-      {wheels &&
-        wheelPositions.map(([x, y]) => (
-          <mesh key={`${x},${y}`} position={[x, y, wheelRadius]}>
-            <cylinderGeometry args={[wheelRadius, wheelRadius, TYRE_WIDTH, 24]} />
-            <meshBasicMaterial color="#495F81" transparent opacity={0.55} />
-          </mesh>
-        ))}
     </group>
   );
 }

@@ -20,6 +20,7 @@ import type { SensorInstance, SensorSpec } from '../core/types';
 import type { DisplayOptions } from '../store/useStore';
 import { PALETTE } from '../theme';
 import { concatIndexed, fovBuffers, toBufferGeometry, type IndexedGeometry } from './fovGeometry';
+import { LAYER } from './layers';
 import UnionLayer from './UnionLayer';
 
 /**
@@ -84,7 +85,7 @@ export default function MergedFov({
       geometry={geometry}
       color={MERGE_COLOR}
       opacity={opacity}
-      renderOrder={2}
+      renderOrder={LAYER.FOV_VOLUME}
       clip={clip}
     />
   );

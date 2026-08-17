@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { LAYER } from './layers';
 
 /** A heavier line every this many cells. */
 const MAJOR_EVERY = 10;
@@ -72,7 +73,7 @@ export default function GroundGrid({ visible, size }: { visible: boolean; size: 
   if (!visible) return null;
 
   return (
-    <group renderOrder={-1}>
+    <group renderOrder={LAYER.GRID}>
       {/* Cool greys stepped towards the slate, so the grid recedes under the palette. */}
       <lineSegments geometry={minor}>
         <lineBasicMaterial color="#D6DEE6" transparent opacity={0.8} depthWrite={false} />

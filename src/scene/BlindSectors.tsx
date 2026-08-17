@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { BLIND_RADIUS, footprintExitRadius } from '../core/coverage';
 import { DEG } from '../core/rotation';
 import type { BlindSector, Vehicle } from '../core/types';
+import { LAYER } from './layers';
 
 const LIFT = 0.003;
 const STEP_DEG = 1;
@@ -65,7 +66,7 @@ export default function BlindSectors({
   if (!visible || !geometry) return null;
 
   return (
-    <mesh geometry={geometry} renderOrder={0}>
+    <mesh geometry={geometry} renderOrder={LAYER.BLIND_SECTORS}>
       {/*
         Light grey rather than red. A gap is a finding, not a fault, and the red read as an error
         the moment more than a sector or two was uncovered. The opacity is well above what the red
