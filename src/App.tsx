@@ -19,7 +19,7 @@ import { useStore } from './store/useStore';
 import DeletePrompt from './ui/DeletePrompt';
 import ExportDialog from './ui/ExportDialog';
 import FullscreenButton from './ui/FullscreenButton';
-import LayoutMenu from './ui/LayoutMenu';
+import FileMenu from './ui/FileMenu';
 import Sidebar from './ui/Sidebar';
 import SidebarResizer, { SIDEBAR_HANDLE_WIDTH } from './ui/SidebarResizer';
 import ZoomControls from './ui/ZoomControls';
@@ -131,7 +131,7 @@ export default function App() {
           />
           <ZoomControls variant="row" />
           {/* Named for what each one writes, so neither is "the other Export". */}
-          <LayoutMenu />
+          <FileMenu />
           <Button
             size="small"
             variant="outlined"
