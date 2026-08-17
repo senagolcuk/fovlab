@@ -11,7 +11,8 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import VerticalSplitOutlinedIcon from '@mui/icons-material/VerticalSplitOutlined';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Stage from './scene/Stage';
 import { hasWebGL2 } from './scene/webgl';
 import { useStore } from './store/useStore';
@@ -21,7 +22,7 @@ import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
 import SidebarResizer from './ui/SidebarResizer';
 import ZoomControls from './ui/ZoomControls';
-import { MONO } from './theme';
+import { CARD_SHADOW, MONO } from './theme';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 
 const MIN_WIDTH = 1280;
@@ -110,7 +111,7 @@ export default function App() {
             looking. The frame's name is not the useful half, so only the directions are given.
           */}
           <Typography
-            sx={{ fontFamily: MONO, fontSize: 12, color: 'text.secondary', whiteSpace: 'nowrap' }}
+            sx={{ fontFamily: MONO, fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}
             title="ISO 8855, right-handed. Origin on the ground at the centre of the footprint."
           >
             +X forward · +Y left · +Z up
@@ -136,21 +137,6 @@ export default function App() {
           >
             Export
           </Button>
-          {/*
-            Next to fullscreen because they answer the same question — how much of the window the
-            drawing gets. In the bar rather than on the sidebar so that it is in one place whether
-            the panels are showing or not: a control that moves when it is used is one people stop
-            trusting.
-          */}
-          <Tooltip title={sidebarOpen ? 'Hide the panels' : 'Show the panels'}>
-            <IconButton
-              size="small"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              sx={{ color: sidebarOpen ? 'primary.main' : 'secondary.main' }}
-            >
-              <VerticalSplitOutlinedIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
           <FullscreenButton />
         </Toolbar>
       </AppBar>
@@ -175,6 +161,41 @@ export default function App() {
             </Box>
           </Collapse>
           <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0 }}>
+            {/*
+              On the divider itself, which is the edge it moves. Anchored to the left of the
+              viewport area rather than to the sidebar, so it lands on the line while the panels
+              are open and at the window edge once they are not — one element, always reachable,
+              never in a different place than last time.
+            */}
+            <Tooltip title={sidebarOpen ? 'Hide the panels' : 'Show the panels'}>
+              <IconButton
+                size="small"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                sx={{
+                  position: 'absolute',
+                  zIndex: 6,
+                  // Mid-height rather than at the top, where it landed on the TOP pane's own
+                  // label, and a little above the halfway line so it clears LEFT's label too.
+                  top: 'calc(50% - 20px)',
+                  left: 0,
+                  transform: sidebarOpen ? 'translate(-50%, -50%)' : 'translate(0, -50%)',
+                  width: 22,
+                  height: 22,
+                  color: 'secondary.main',
+                  bgcolor: 'background.paper',
+                  border: 1,
+                  borderColor: 'divider',
+                  boxShadow: CARD_SHADOW,
+                  '&:hover': { bgcolor: 'background.paper', borderColor: 'primary.main' },
+                }}
+              >
+                {sidebarOpen ? (
+                  <ChevronLeftIcon sx={{ fontSize: 15 }} />
+                ) : (
+                  <ChevronRightIcon sx={{ fontSize: 15 }} />
+                )}
+              </IconButton>
+            </Tooltip>
             {webgl ? (
               <>
                 <Stage />

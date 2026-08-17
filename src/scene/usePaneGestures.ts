@@ -19,7 +19,14 @@ import type { ViewName } from '../core/viewport';
 import { useStore, type OrthoViewState } from '../store/useStore';
 import { getPaneScene } from './exportBridge';
 import { gizmoHandleUnderPointer } from './gizmoHandle';
-import { ORTHO_DEFS, isoMetresPerPixel, orthoPaneDeltaToWorld, orthoWorldToPane, type OrthoName } from './views';
+import {
+  ORTHO_DEFS,
+  isoMetresPerPixel,
+  isoScreenAxes,
+  orthoPaneDeltaToWorld,
+  orthoWorldToPane,
+  type OrthoName,
+} from './views';
 import { wheelPixels } from './wheel';
 
 const WHEEL_SENSITIVITY = 0.0015;
@@ -193,14 +200,7 @@ export function usePaneGestures(
       if (panning) {
         const rect = el.getBoundingClientRect();
         const mpp = isoMetresPerPixel(iso, rect.height);
-        const az = (iso.azimuth * Math.PI) / 180;
-        const elev = (iso.elevation * Math.PI) / 180;
-        const right: Vec3 = [-Math.sin(az), Math.cos(az), 0];
-        const up: Vec3 = [
-          -Math.sin(elev) * Math.cos(az),
-          -Math.sin(elev) * Math.sin(az),
-          Math.cos(elev),
-        ];
+        const { right, up } = isoScreenAxes(iso);
         store.setIsoView({
           target: [
             iso.target[0] - right[0] * dx * mpp + up[0] * dy * mpp,
