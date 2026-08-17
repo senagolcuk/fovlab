@@ -21,17 +21,17 @@ export const LAYER = {
   FOV_OUTLINE: 40,
 
   /**
-   * The vehicle sits above the FOV, not below it, and paints solid.
+   * The vehicle.
    *
    * A sensor is mounted *on* the vehicle, so its volume starts inside the body and every FOV
    * overlaps it. Painted underneath, the body vanished into whichever fan covered it and the
-   * thing every measurement is relative to became the hardest object to see. Painted above but
-   * translucent, both were visible at once through the same pixels, which in TOP reads as a
-   * stain rather than as one object in front of another. So the body is opaque: where they
-   * overlap you get the vehicle, and only the vehicle.
+   * thing every measurement is relative to became the hardest object to see.
    *
-   * The wheels go *after* the body for that reason — under an opaque fill they would not be
-   * there at all.
+   * The body is the exception to everything said above: it is opaque and it writes depth, so it
+   * is drawn in the depth-tested pass before any of these orders apply. That is what decides the
+   * FOV against it — behind the body rejected, in front of it kept — where a `renderOrder` alone
+   * could only ever put one of them on top everywhere. The numbers here still order the vehicle's
+   * own marks, which are drawn afterwards and read through it.
    */
   VEHICLE_BODY: 50,
   VEHICLE_WHEELS: 60,

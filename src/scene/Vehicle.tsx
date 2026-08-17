@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { roundedRectPolygon } from '../core/footprint';
 import { blockInnerExtents, bodyBlocks } from '../core/profile';
 import { LAYER } from './layers';
-import UnionLayer from './UnionLayer';
 import type { Vehicle } from '../core/types';
 
 const TYRE_WIDTH = 0.22;
@@ -116,31 +115,44 @@ export default function VehicleBody({
   return (
     <group>
       {/*
-        Every piece here is `transparent`, the wheels for their own sake and the rest only to join
-        the same render list. A material without it goes in the depth-tested pass, which three
-        draws before all translucent geometry — the body, edges and nose would sink under the very
-        volumes this layering exists to keep them above, whatever their `renderOrder` said. The
-        body carries `opacity: 1` inside that list: blended, and covering.
-      */}
-      <UnionLayer
-        geometry={merged}
-        color="#C3D3DC"
-        opacity={1}
-        renderOrder={LAYER.VEHICLE_BODY}
-        clip={null}
-      />
+        The body is the one thing in the scene that writes depth, and it is opaque so that it can.
+        Ordering it above the FOV was not enough on its own: with nothing in the depth buffer the
+        stack is pure paint order, so the near half of a fan — the half between the camera and the
+        car — was painted over too, and a volume that starts at a sensor on the bumper appeared to
+        start at the car's silhouette instead. Writing depth is what tells the two apart: behind
+        the body the FOV is rejected, in front of it it is not.
 
+        No `UnionLayer` here. It deduplicates overlapping *translucent* fills, and an opaque one
+        painted twice is the same colour either way.
+      */}
+      <mesh geometry={merged} renderOrder={LAYER.VEHICLE_BODY}>
+        <meshBasicMaterial color="#C3D3DC" side={THREE.DoubleSide} />
+      </mesh>
+
+      {/*
+        Everything below is `transparent` only to join the sorted render list, and `depthTest:
+        false` to stay visible through the solid body it is drawn against — the wheels sit inside
+        it and the far edges behind it. That is the drawing this tool has always made: a body you
+        can read the running gear through. The cost is that these thin marks also sit over a fan
+        passing in front of the car, which at this weight is not worth a second depth pass.
+      */}
       {wheels &&
         wheelPositions.map(([x, y]) => (
           <mesh key={`${x},${y}`} position={[x, y, wheelRadius]} renderOrder={LAYER.VEHICLE_WHEELS}>
             <cylinderGeometry args={[wheelRadius, wheelRadius, TYRE_WIDTH, 24]} />
-            <meshBasicMaterial color="#495F81" transparent opacity={0.55} depthWrite={false} />
+            <meshBasicMaterial
+              color="#495F81"
+              transparent
+              opacity={0.55}
+              depthWrite={false}
+              depthTest={false}
+            />
           </mesh>
         ))}
 
       {edges.map((geometry, i) => (
         <lineSegments key={i} geometry={geometry} renderOrder={LAYER.VEHICLE_EDGES}>
-          <lineBasicMaterial color="#495F81" transparent depthWrite={false} />
+          <lineBasicMaterial color="#495F81" transparent depthWrite={false} depthTest={false} />
         </lineSegments>
       ))}
 
@@ -150,6 +162,7 @@ export default function VehicleBody({
           side={THREE.DoubleSide}
           transparent
           depthWrite={false}
+          depthTest={false}
         />
       </mesh>
     </group>
