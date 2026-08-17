@@ -80,11 +80,11 @@ export function poseMatrix(pose: Pose): Mat3 {
  * 10° on a 120° one, and at 10° the arc reads as a row of straight edges. Holding the angle
  * constant keeps every sensor equally round and leaves narrow ones cheap.
  *
- * Horizontal is finer than vertical because it is the one you see: the far arc in plan view and
- * the footprint outline both come from it.
+ * The same angle both ways. Vertical used to be ten degrees on the reasoning that horizontal is
+ * the one you see — true of TOP, and wrong about FRONT and LEFT, where the vertical sweep is the
+ * arc and a 60° lens came out as six visible straight runs.
  */
-const DEG_PER_FACET_H = 3;
-const DEG_PER_FACET_V = 10;
+const DEG_PER_FACET = 3;
 
 function segments(angleDeg: number, perFacet: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.ceil(angleDeg / perFacet)));
@@ -173,8 +173,8 @@ export function frustum(pose: Pose, spec: FovSpec, mode: RangeMode = 'axis'): Fr
 
   if (mode === 'radial') {
     const { hfov, vfov } = clampSpec(spec);
-    const nh = segments(hfov, DEG_PER_FACET_H, 8, 72);
-    const nv = segments(vfov, DEG_PER_FACET_V, 3, 24);
+    const nh = segments(hfov, DEG_PER_FACET, 8, 72);
+    const nv = segments(vfov, DEG_PER_FACET, 8, 72);
     return {
       vertices: [origin, ...localCapGrid(spec, nh, nv).map(toWorld)],
       ...capTopology(nh, nv),

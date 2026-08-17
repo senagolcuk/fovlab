@@ -215,7 +215,7 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
               {/* The wordmark's face: this is the app talking, not another panel label. */}
               <Typography
                 sx={{
-                  fontSize: 14.5,
+                  fontSize: 13.5,
                   // Light: the sidebar's headings and labels carry this face at 500 and 600, so
                   // running copy in it has to sit below them or the card reads as a heading.
                   fontWeight: 400,

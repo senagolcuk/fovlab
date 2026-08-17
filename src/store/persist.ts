@@ -152,7 +152,7 @@ function sanitizeSensor(raw: unknown, index: number): SensorInstance | null {
 
   const inst: SensorInstance = {
     id: newId(),
-    name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 64) : `SENSOR ${index + 1}`,
+    name: typeof s.name === 'string' && s.name.trim() ? s.name.slice(0, 64) : `Sensor ${index + 1}`,
     specId,
     // Duplicated rather than imported from the store, which imports this module.
     color: typeof s.color === 'string' && HEX.test(s.color) ? s.color : '#E8827C',

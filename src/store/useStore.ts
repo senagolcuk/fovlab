@@ -282,7 +282,7 @@ function nextColor(sensors: SensorInstance[]): string {
 }
 
 function nextName(sensors: SensorInstance[]): string {
-  return `SENSOR ${sensors.length + 1}`;
+  return `Sensor ${sensors.length + 1}`;
 }
 
 /**
