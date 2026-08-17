@@ -10,7 +10,6 @@ import { useLayoutEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useStore } from '../store/useStore';
-import { PLAN_MASK_LAYER } from './PlanMask';
 import {
   ISO_FOV,
   ORTHO_DEFS,
@@ -34,12 +33,6 @@ export function OrthoCamera({ name }: { name: OrthoName }) {
   useLayoutEffect(() => {
     set({ camera });
   }, [camera, set]);
-
-  // Only TOP looks down the column the plan mask fills; the other panes must not see it.
-  useLayoutEffect(() => {
-    if (name === 'TOP') camera.layers.enable(PLAN_MASK_LAYER);
-    else camera.layers.disable(PLAN_MASK_LAYER);
-  }, [camera, name]);
 
   useLayoutEffect(() => {
     camera.up.copy(def.up);

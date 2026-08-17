@@ -115,18 +115,22 @@ export default function VehicleBody({
   return (
     <group>
       {/*
-        The body is the one thing in the scene that writes depth, and it is opaque so that it can.
-        Ordering it above the FOV was not enough on its own: with nothing in the depth buffer the
-        stack is pure paint order, so the near half of a fan — the half between the camera and the
-        car — was painted over too, and a volume that starts at a sensor on the bumper appeared to
-        start at the car's silhouette instead. Writing depth is what tells the two apart: behind
-        the body the FOV is rejected, in front of it it is not.
+        Opaque, and deliberately not depth-tested: the body covers every FOV wherever the two
+        meet on screen, whether the volume is in front of it or behind. See `LAYER.VEHICLE_BODY`
+        for why the truthful answer is the wrong one here. `transparent` is what puts it in the
+        sorted list at all, where the order decides it; the opacity is still 1.
 
-        No `UnionLayer` here. It deduplicates overlapping *translucent* fills, and an opaque one
+        No `UnionLayer`. It deduplicates overlapping *translucent* fills, and an opaque one
         painted twice is the same colour either way.
       */}
       <mesh geometry={merged} renderOrder={LAYER.VEHICLE_BODY}>
-        <meshBasicMaterial color="#C3D3DC" side={THREE.DoubleSide} />
+        <meshBasicMaterial
+          color="#C3D3DC"
+          side={THREE.DoubleSide}
+          transparent
+          depthWrite={false}
+          depthTest={false}
+        />
       </mesh>
 
       {/*

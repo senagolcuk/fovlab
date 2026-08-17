@@ -137,13 +137,18 @@ function SensorFov({
         </mesh>
       )}
 
+      {/*
+        Over the vehicle rather than behind it, which is the whole of what the body leaves out.
+        Drawn once, not twice: the body is opaque, so the run that crosses it simply lands on top.
+      */}
       {display.edges && !merged && (
-        <lineSegments geometry={geometry.edges} renderOrder={LAYER.FOV_EDGES}>
+        <lineSegments geometry={geometry.edges} renderOrder={LAYER.FOV_OUTLINE_OVER_BODY}>
           <lineBasicMaterial
             color={sensor.color}
             transparent
             opacity={selected ? 1 : 0.75}
             depthWrite={false}
+            depthTest={false}
             clippingPlanes={clip}
           />
         </lineSegments>

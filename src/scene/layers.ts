@@ -21,27 +21,28 @@ export const LAYER = {
   FOV_OUTLINE: 40,
 
   /**
-   * The vehicle.
+   * The vehicle, drawn solid over every FOV rather than depth-tested against them.
    *
-   * A sensor is mounted *on* the vehicle, so its volume starts inside the body and every FOV
-   * overlaps it. Painted underneath, the body vanished into whichever fan covered it and the
-   * thing every measurement is relative to became the hardest object to see.
-   *
-   * The body is the exception to everything said above: it is opaque and it writes depth, so it
-   * is drawn in the depth-tested pass before any of these orders apply. That is what decides the
-   * FOV against it — behind the body rejected, in front of it kept — where a `renderOrder` alone
-   * could only ever put one of them on top everywhere. The numbers here still order the vehicle's
-   * own marks, which are drawn afterwards and read through it.
+   * Depth is the truthful answer and it is not the useful one. A sensor is mounted *on* the
+   * vehicle, so its volume starts at the body and spreads around it: a flank camera's field
+   * passes over the roof, a bumper camera's wraps down the side. All of that is genuinely nearer
+   * the camera than the panel behind it, so depth draws it, and the vehicle ends up washed in
+   * whichever colours happen to surround it — least legible exactly where the sensors are
+   * densest. The body is the reference every angle and offset is measured from. It stays clean.
    */
   VEHICLE_BODY: 50,
-  /**
-   * After the body, and this order is load-bearing. Both are opaque, and three sorts the opaque
-   * pass by `renderOrder` before distance — without it the column, whose top is 400 m up, would
-   * be nearer than the roof and would mask out the very body it exists to extend.
-   */
-  VEHICLE_PLAN_MASK: 55,
   VEHICLE_WHEELS: 60,
   VEHICLE_EDGES: 70,
+
+  /**
+   * The FOV's silhouette, drawn again over the vehicle it was just hidden behind.
+   *
+   * Hiding the volume alone leaves a fan that begins at the vehicle's outline instead of at its
+   * sensor, which reads as a volume with no source. The outline carries the connection across
+   * without tinting anything: one line each way, the drawing convention for an edge you cannot
+   * see through.
+   */
+  FOV_OUTLINE_OVER_BODY: 75,
 
   /** Sensor markers last: they are handles to click, not geometry to look through. */
   SENSOR_MARKER: 80,
