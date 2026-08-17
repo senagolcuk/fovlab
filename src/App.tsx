@@ -8,6 +8,9 @@ import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import Stage from './scene/Stage';
 import { hasWebGL2 } from './scene/webgl';
 import { useStore } from './store/useStore';
@@ -15,6 +18,7 @@ import DeletePrompt from './ui/DeletePrompt';
 import ExportDialog from './ui/ExportDialog';
 import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
+import SidebarResizer from './ui/SidebarResizer';
 import ZoomControls from './ui/ZoomControls';
 import { MONO } from './theme';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
@@ -75,6 +79,8 @@ export default function App() {
   const [exportOpen, setExportOpen] = useState(false);
   // Asked once: the answer cannot change while the page is open.
   const webgl = useMemo(hasWebGL2, []);
+  const sidebarOpen = useStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useStore((s) => s.setSidebarOpen);
   const linkZoom = useStore((s) => s.linkZoom);
   const setLinkZoom = useStore((s) => s.setLinkZoom);
 
@@ -86,6 +92,24 @@ export default function App() {
         sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
       >
         <Toolbar variant="dense" sx={{ gap: 2 }}>
+          {/*
+            In the bar rather than in the sidebar: it has to be reachable in both states, and a
+            control that moves or disappears when it is used is one people stop trusting.
+          */}
+          <Tooltip title={sidebarOpen ? 'Hide the panels' : 'Show the panels'}>
+            <IconButton
+              size="small"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              sx={{
+                color: 'secondary.main',
+                ml: -1,
+                mr: -1,
+                transform: sidebarOpen ? 'none' : 'rotate(180deg)',
+              }}
+            >
+              <MenuOpenIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Typography
             variant="h6"
             sx={{
@@ -135,7 +159,12 @@ export default function App() {
 
       {wideEnough ? (
         <Box sx={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
-          <Sidebar />
+          {sidebarOpen && (
+            <>
+              <Sidebar />
+              <SidebarResizer />
+            </>
+          )}
           <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0 }}>
             {webgl ? (
               <>

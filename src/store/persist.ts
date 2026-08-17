@@ -259,9 +259,28 @@ const PREFS_KEY = 'sensor-fov.prefs.v1';
 export interface Prefs {
   /** False once the engineer has ticked "don't ask again" on the delete prompt. */
   askBeforeDelete: boolean;
+  /** Sidebar width in pixels, and whether it is showing at all. */
+  sidebarWidth: number;
+  sidebarOpen: boolean;
 }
 
-export const DEFAULT_PREFS: Prefs = { askBeforeDelete: true };
+/**
+ * How narrow the sidebar may get.
+ *
+ * Measured rather than guessed: a sweep counting elements whose content is wider than their box
+ * finds real clipping at every width below 340 and nothing but MUI's own fieldset internals at or
+ * above it. The last thing to go is the Vehicle / Wheels / Dimensions row; just under it, the
+ * Shape group loses the end of "Cylinder". Narrower than this the panels do not break so much as
+ * go quietly wrong, which is worse.
+ */
+export const SIDEBAR_WIDTH_LIMITS: readonly [number, number] = [340, 560];
+export const SIDEBAR_WIDTH_DEFAULT = 360;
+
+export const DEFAULT_PREFS: Prefs = {
+  askBeforeDelete: true,
+  sidebarWidth: SIDEBAR_WIDTH_DEFAULT,
+  sidebarOpen: true,
+};
 
 export function loadPrefs(): Prefs {
   try {
@@ -269,9 +288,16 @@ export function loadPrefs(): Prefs {
     if (!text) return DEFAULT_PREFS;
     const parsed: unknown = JSON.parse(text);
     if (typeof parsed !== 'object' || parsed === null) return DEFAULT_PREFS;
-    const { askBeforeDelete } = parsed as Partial<Prefs>;
-    // Only an explicit false turns the prompt off; anything unreadable keeps asking.
-    return { askBeforeDelete: askBeforeDelete !== false };
+    const { askBeforeDelete, sidebarWidth, sidebarOpen } = parsed as Partial<Prefs>;
+    return {
+      // Only an explicit false turns the prompt off; anything unreadable keeps asking.
+      askBeforeDelete: askBeforeDelete !== false,
+      sidebarWidth:
+        typeof sidebarWidth === 'number' && Number.isFinite(sidebarWidth)
+          ? clamp(sidebarWidth, ...SIDEBAR_WIDTH_LIMITS)
+          : SIDEBAR_WIDTH_DEFAULT,
+      sidebarOpen: sidebarOpen !== false,
+    };
   } catch {
     return DEFAULT_PREFS;
   }

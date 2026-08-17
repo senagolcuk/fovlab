@@ -27,6 +27,7 @@ import catalogJson from '../data/sensors.json';
 import {
   DEFAULT_PREFS,
   DEFAULT_VEHICLE,
+  SIDEBAR_WIDTH_LIMITS,
   loadLayout,
   loadModels,
   DEFAULT_RANGE_MODE,
@@ -169,6 +170,12 @@ export interface AppState {
   pendingDeleteId: string | null;
   /** Cleared for good once the engineer ticks "don't ask again". Persisted per person. */
   askBeforeDelete: boolean;
+
+  /** The sidebar's width, and whether it is showing. Both persisted per person. */
+  sidebarWidth: number;
+  sidebarOpen: boolean;
+  setSidebarWidth(px: number): void;
+  setSidebarOpen(open: boolean): void;
   /** Opens the prompt, or deletes outright if the prompt has been turned off. */
   requestDeleteSensor(id: string): void;
   confirmPendingDelete(dontAskAgain: boolean): void;
@@ -247,6 +254,23 @@ export const SENSOR_COLORS = [
 /** Ships with the app. Read-only: growing it needs a datasheet and a commit. */
 export const builtInCatalog = parseCatalog(catalogJson);
 
+const startingPrefs = typeof localStorage === 'undefined' ? DEFAULT_PREFS : loadPrefs();
+
+/**
+ * Writes the whole preferences record from the current state.
+ *
+ * Each setter used to pass its own field alone, which was fine while there was one of them and a
+ * quiet way to drop the others as soon as there were two.
+ */
+function persistPrefs(): void {
+  const s = useStore.getState();
+  savePrefs({
+    askBeforeDelete: s.askBeforeDelete,
+    sidebarWidth: s.sidebarWidth,
+    sidebarOpen: s.sidebarOpen,
+  });
+}
+
 const restored = typeof localStorage === 'undefined' ? null : loadLayout();
 const restoredModels = typeof localStorage === 'undefined' ? [] : loadModels();
 
@@ -323,7 +347,19 @@ export const useStore = create<AppState>()((set, get) => ({
   gizmoDragging: false,
   fitNonce: 0,
   pendingDeleteId: null,
-  askBeforeDelete: typeof localStorage === 'undefined' ? DEFAULT_PREFS.askBeforeDelete : loadPrefs().askBeforeDelete,
+  askBeforeDelete: startingPrefs.askBeforeDelete,
+  sidebarWidth: startingPrefs.sidebarWidth,
+  sidebarOpen: startingPrefs.sidebarOpen,
+
+  setSidebarWidth(px) {
+    set({ sidebarWidth: clamp(px, ...SIDEBAR_WIDTH_LIMITS) });
+    persistPrefs();
+  },
+
+  setSidebarOpen(open) {
+    set({ sidebarOpen: open });
+    persistPrefs();
+  },
   canUndo: false,
   canRedo: false,
 
@@ -412,7 +448,7 @@ export const useStore = create<AppState>()((set, get) => ({
     const id = get().pendingDeleteId;
     if (dontAskAgain) {
       set({ askBeforeDelete: false });
-      savePrefs({ askBeforeDelete: false });
+      persistPrefs();
     }
     set({ pendingDeleteId: null });
     if (id) get().removeSensor(id);
@@ -424,7 +460,7 @@ export const useStore = create<AppState>()((set, get) => ({
 
   setAskBeforeDelete(on) {
     set({ askBeforeDelete: on });
-    savePrefs({ askBeforeDelete: on });
+    persistPrefs();
   },
 
   // Declared below, next to the history they act on.
