@@ -96,22 +96,6 @@ export function isoCameraQuaternion(position: THREE.Vector3, target: Vec3): THRE
   return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
 }
 
-/**
- * The ISO pane's screen-right and screen-up directions, in world space.
- *
- * Derived from the orbit angles rather than read off the camera, so it is available to anything
- * that has the view state — the pan gesture and the resize anchor both need it, and two copies of
- * this would drift.
- */
-export function isoScreenAxes(view: IsoViewState): { right: Vec3; up: Vec3 } {
-  const az = view.azimuth * DEG;
-  const el = view.elevation * DEG;
-  return {
-    right: [-Math.sin(az), Math.cos(az), 0],
-    up: [-Math.sin(el) * Math.cos(az), -Math.sin(el) * Math.sin(az), Math.cos(el)],
-  };
-}
-
 /** Metres per pixel at the orbit target, for shift-drag panning. */
 export function isoMetresPerPixel(view: IsoViewState, paneHeight: number): number {
   if (paneHeight <= 0) return 0;

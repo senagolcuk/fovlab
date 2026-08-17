@@ -275,8 +275,6 @@ export interface Prefs {
  */
 export const SIDEBAR_WIDTH_LIMITS: readonly [number, number] = [340, 560];
 export const SIDEBAR_WIDTH_DEFAULT = 360;
-/** The grab strip that draws the divider, counted as part of what the sidebar occupies. */
-export const SIDEBAR_HANDLE_WIDTH = 7;
 
 export const DEFAULT_PREFS: Prefs = {
   askBeforeDelete: true,

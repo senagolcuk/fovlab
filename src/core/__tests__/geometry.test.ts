@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { applyMat3, multiplyMat3, rotationMatrix, transpose } from '../rotation';
 import { frustum } from '../frustum';
 import { groundPolygon, polygonArea, polygonExtents } from '../ground';
-import { EMPTY_RECT, paneCentreShifts, viewportRects, VIEW_NAMES } from '../viewport';
+import { EMPTY_RECT, viewportRects, VIEW_NAMES } from '../viewport';
 import type { Pose, Vec3 } from '../types';
 
 const TOL = 1e-4;
@@ -155,44 +155,5 @@ describe('acceptance', () => {
 
   it('10c — no maximised pane is the tiling it always was', () => {
     expect(viewportRects(1601, 901, null)).toEqual(viewportRects(1601, 901));
-  });
-
-  it('10d — a wider viewport area moves every pane centre by a knowable amount', () => {
-    const H = 900;
-    // The sidebar gives up 360 px: the area gains it and its left edge moves the other way.
-    const before = viewportRects(1240, H);
-    const after = viewportRects(1600, H);
-    const shifts = paneCentreShifts(before, after, -360);
-
-    for (const name of VIEW_NAMES) {
-      // Panning by the shift puts each pane centre back over the same point of the window.
-      const b = before[name];
-      const a = after[name];
-      expect(0 + b.x + b.width / 2 + shifts[name].dx).toBeCloseTo(
-        -360 + a.x + a.width / 2,
-        9,
-      );
-      expect(b.y + b.height / 2 + shifts[name].dy).toBeCloseTo(a.y + a.height / 2, 9);
-    }
-  });
-
-  it('10e — a pane that is not on screen is left alone', () => {
-    const shifts = paneCentreShifts(
-      viewportRects(1240, 900, 'ISO'),
-      viewportRects(1600, 900, 'ISO'),
-      -360,
-    );
-    for (const name of VIEW_NAMES) {
-      if (name === 'ISO') continue;
-      expect(shifts[name]).toEqual({ dx: 0, dy: 0 });
-    }
-    // The maximised pane fills the area, so its centre moves by half the growth less the shift.
-    expect(shifts.ISO.dx).toBeCloseTo(-360 + 800 - 620, 9);
-  });
-
-  it('10f — nothing moves when the area does not change', () => {
-    const rects = viewportRects(1240, 900);
-    const shifts = paneCentreShifts(rects, rects, 0);
-    for (const name of VIEW_NAMES) expect(shifts[name]).toEqual({ dx: 0, dy: 0 });
   });
 });

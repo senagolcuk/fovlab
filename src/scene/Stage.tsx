@@ -295,17 +295,20 @@ function Pane({
   );
 }
 
-export default function Stage({ width, height }: { width: number; height: number }) {
+export default function Stage() {
   const hostRef = useRef<HTMLDivElement>(null);
-  /**
-   * Given, not measured.
-   *
-   * This used to come from a `ResizeObserver` on the host, and that is a frame behind the layout:
-   * a sidebar drag moved the host, the panes kept last frame's rectangles, and whichever of the
-   * two the cameras agreed with, the drawing jumped against the other. Taking the size as a prop
-   * puts the sidebar, the pane rectangles and the cameras in one render, from one number.
-   */
-  const size = { width, height };
+  const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setSize({ width: el.clientWidth, height: el.clientHeight });
+    });
+    observer.observe(el);
+    setSize({ width: el.clientWidth, height: el.clientHeight });
+    return () => observer.disconnect();
+  }, []);
 
   const maximizedView = useStore((s) => s.maximizedView);
   const rects = useMemo(
@@ -364,20 +367,13 @@ export default function Stage({ width, height }: { width: number; height: number
   );
 
   const fitNonce = useStore((s) => s.fitNonce);
-  /**
-   * The nonce this effect last acted on, rather than a "have we fitted yet" flag.
-   *
-   * The flag only suppressed refitting while the nonce was still zero, so after any `Fit all
-   * views` every later resize refitted too — including every frame of a sidebar drag, which threw
-   * the drawing around. A fit is a thing the engineer asks for; a resize is not asking.
-   */
-  const fittedNonce = useRef(-1);
+  const fittedOnce = useRef(false);
   const maximizedBefore = useRef<ViewName | null>(null);
 
   useEffect(() => {
     if (size.width === 0 || size.height === 0) return;
-    if (fittedNonce.current === fitNonce) return;
-    fittedNonce.current = fitNonce;
+    if (fitNonce === 0 && fittedOnce.current) return;
+    fittedOnce.current = true;
     fitPanes();
   }, [fitNonce, size.width, size.height, fitPanes]);
 

@@ -13,13 +13,14 @@
 import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
-import { SIDEBAR_HANDLE_WIDTH, SIDEBAR_WIDTH_DEFAULT } from '../store/persist';
+import { SIDEBAR_WIDTH_DEFAULT } from '../store/persist';
+import { useStore } from '../store/useStore';
 
-export default function SidebarResizer({ onResize }: { onResize: (width: number) => void }) {
-  // Held in a ref so the listeners are attached once and still call the current handler.
-  const resize = useRef(onResize);
-  resize.current = onResize;
+/** Wide enough to catch, narrow enough not to feel like a column of its own. */
+const GRAB_WIDTH = 7;
 
+export default function SidebarResizer() {
+  const setSidebarWidth = useStore((s) => s.setSidebarWidth);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function SidebarResizer({ onResize }: { onResize: (width: number)
 
     const onPointerMove = (e: PointerEvent) => {
       // The sidebar starts at the left edge of the window, so the pointer's x *is* the width.
-      if (dragging) resize.current(e.clientX);
+      if (dragging) setSidebarWidth(e.clientX);
     };
 
     const stop = (e: PointerEvent) => {
@@ -61,15 +62,15 @@ export default function SidebarResizer({ onResize }: { onResize: (width: number)
       el.removeEventListener('pointercancel', stop);
       document.body.style.cursor = '';
     };
-  }, []);
+  }, [setSidebarWidth]);
 
   return (
     <Tooltip title="Drag to resize · double-click to reset" enterDelay={700}>
       <Box
         ref={ref}
-        onDoubleClick={() => resize.current(SIDEBAR_WIDTH_DEFAULT)}
+        onDoubleClick={() => setSidebarWidth(SIDEBAR_WIDTH_DEFAULT)}
         sx={{
-          width: `${SIDEBAR_HANDLE_WIDTH}px`,
+          width: `${GRAB_WIDTH}px`,
           flexShrink: 0,
           height: '100%',
           cursor: 'col-resize',
