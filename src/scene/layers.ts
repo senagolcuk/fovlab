@@ -21,15 +21,20 @@ export const LAYER = {
   FOV_OUTLINE: 40,
 
   /**
-   * The vehicle sits above the FOV, not below it.
+   * The vehicle sits above the FOV, not below it, and paints solid.
    *
    * A sensor is mounted *on* the vehicle, so its volume starts inside the body and every FOV
    * overlaps it. Painted underneath, the body vanished into whichever fan covered it and the
-   * thing every measurement is relative to became the hardest object to see. Above, the body
-   * keeps its own 35% and the FOV reads as passing behind it.
+   * thing every measurement is relative to became the hardest object to see. Painted above but
+   * translucent, both were visible at once through the same pixels, which in TOP reads as a
+   * stain rather than as one object in front of another. So the body is opaque: where they
+   * overlap you get the vehicle, and only the vehicle.
+   *
+   * The wheels go *after* the body for that reason — under an opaque fill they would not be
+   * there at all.
    */
-  VEHICLE_WHEELS: 50,
-  VEHICLE_BODY: 60,
+  VEHICLE_BODY: 50,
+  VEHICLE_WHEELS: 60,
   VEHICLE_EDGES: 70,
 
   /** Sensor markers last: they are handles to click, not geometry to look through. */

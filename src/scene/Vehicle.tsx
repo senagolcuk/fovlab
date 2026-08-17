@@ -118,9 +118,18 @@ export default function VehicleBody({
       {/*
         Every piece here is `transparent`, the wheels for their own sake and the rest only to join
         the same render list. A material without it goes in the depth-tested pass, which three
-        draws before all translucent geometry — the edges and the nose would sink under the very
-        volumes this layering exists to keep them above, whatever their `renderOrder` said.
+        draws before all translucent geometry — the body, edges and nose would sink under the very
+        volumes this layering exists to keep them above, whatever their `renderOrder` said. The
+        body carries `opacity: 1` inside that list: blended, and covering.
       */}
+      <UnionLayer
+        geometry={merged}
+        color="#C3D3DC"
+        opacity={1}
+        renderOrder={LAYER.VEHICLE_BODY}
+        clip={null}
+      />
+
       {wheels &&
         wheelPositions.map(([x, y]) => (
           <mesh key={`${x},${y}`} position={[x, y, wheelRadius]} renderOrder={LAYER.VEHICLE_WHEELS}>
@@ -128,14 +137,6 @@ export default function VehicleBody({
             <meshBasicMaterial color="#495F81" transparent opacity={0.55} depthWrite={false} />
           </mesh>
         ))}
-
-      <UnionLayer
-        geometry={merged}
-        color="#C3D3DC"
-        opacity={0.35}
-        renderOrder={LAYER.VEHICLE_BODY}
-        clip={null}
-      />
 
       {edges.map((geometry, i) => (
         <lineSegments key={i} geometry={geometry} renderOrder={LAYER.VEHICLE_EDGES}>
