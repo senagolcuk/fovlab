@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Collapse from '@mui/material/Collapse';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -144,6 +145,7 @@ export default function SensorList() {
     [select],
   );
   const [error, setError] = useState<string | null>(null);
+  const requestDeleteSensor = useStore((s) => s.requestDeleteSensor);
   const [confirmReset, setConfirmReset] = useState(false);
 
   const list = ids ? ids.split(',') : [];
@@ -175,27 +177,58 @@ export default function SensorList() {
         )}
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 0.5, mt: 1.5, flexWrap: 'wrap' }}>
+      {/*
+        One labelled action and three marks. Add is the thing you come here to do, so it keeps its
+        word; the other three are recognisable as shapes and were spending a row and a half of a
+        340 px panel on saying so. Each carries a tooltip, and the two that destroy something are
+        the two in red.
+      */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.5 }}>
         <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => addSensor()}>
-          Add sensor
+          Add
         </Button>
-        <Button
-          size="small"
-          startIcon={<ContentCopyIcon />}
-          disabled={!selectedId}
-          onClick={() => selectedId && duplicateSensor(selectedId)}
-        >
-          Duplicate
-        </Button>
-        <Button
-          size="small"
-          color="error"
-          startIcon={<RestartAltIcon />}
-          // Nothing to lose when the list is already empty, so skip straight to the refit.
-          onClick={() => (list.length === 0 ? reset() : setConfirmReset(true))}
-        >
-          Reset
-        </Button>
+
+        {/*
+          The span is not decoration. A disabled button emits no pointer events, so a tooltip
+          attached straight to it says nothing in the one state where a mark most needs explaining:
+          before anything is selected.
+        */}
+        <Tooltip title="Duplicate the selected sensor">
+          <span>
+            <IconButton
+              size="small"
+              disabled={!selectedId}
+              onClick={() => selectedId && duplicateSensor(selectedId)}
+            >
+              <ContentCopyIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        <Tooltip title="Remove every sensor">
+          <IconButton
+            size="small"
+            color="error"
+            // Nothing to lose when the list is already empty, so skip straight to the refit.
+            onClick={() => (list.length === 0 ? reset() : setConfirmReset(true))}
+          >
+            <RestartAltIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Delete the selected sensor">
+          <span>
+            <IconButton
+              size="small"
+              color="error"
+              disabled={!selectedId}
+              // Through the prompt, so it honours the same "don't ask again" the editor's does.
+              onClick={() => selectedId && requestDeleteSensor(selectedId)}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
       </Box>
 
       <Dialog open={confirmReset} onClose={() => setConfirmReset(false)}>
