@@ -130,3 +130,36 @@ describe('anglesFromMatrix', () => {
     }
   });
 });
+
+describe('snapping out of the body', () => {
+  const bus: Vehicle = {
+    length: 6,
+    width: 2.2,
+    height: 2.4,
+    clearance: 0.25,
+    wheelbase: 3.6,
+    wheelRadius: 0.42,
+    shape: 'box',
+    model: 'bus',
+    cornerRadius: 0,
+  };
+
+  it('fires however deep the point is, where the tolerance would have given up', () => {
+    // Dead centre of a 2.2 m wide body: 1.1 m from the nearest wall, far outside SNAP_DISTANCE.
+    const hit = snapToBody([0, 0, 1.4], bus);
+    expect(hit).not.toBeNull();
+    expect(Math.abs(hit!.position[1])).toBeCloseTo(1.1, 6);
+  });
+
+  it('still leaves a point outside the tolerance alone', () => {
+    // Same 1.1 m, but off the flank rather than inside it.
+    expect(snapToBody([0, 2.2, 1.4], bus)).toBeNull();
+  });
+
+  it('puts the sensor on the nearest face, not the widest one', () => {
+    // Nearer the roof (2.65) than either flank: 0.15 up against 1.0 across.
+    const hit = snapToBody([0, 0.1, 2.5], bus)!;
+    expect(hit.position[2]).toBeCloseTo(2.65, 6);
+    expect(hit.normal).toEqual([0, 0, 1]);
+  });
+});

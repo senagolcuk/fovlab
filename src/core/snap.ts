@@ -8,7 +8,7 @@
  */
 
 import { cornerRadius } from './footprint';
-import { blockRadius, bodyBlocks, isInsideBlockPlan } from './profile';
+import { blockRadius, bodyBlocks, isInsideBlockPlan, isInsideBodySolid } from './profile';
 import { clamp } from './rotation';
 import type { Vec3, Vehicle } from './types';
 
@@ -222,5 +222,17 @@ export function snapToBody(
   tolerance = SNAP_DISTANCE,
 ): SurfacePoint | null {
   const hit = nearestOnBody(p, vehicle);
-  return hit.distance <= tolerance ? hit : null;
+  if (hit.distance <= tolerance) return hit;
+  /**
+   * Inside the body, the tolerance does not apply and the snap is unconditional.
+   *
+   * Outside it, `tolerance` is a judgement about intent: a drag that ends 20 cm off the wing
+   * mirror probably meant to be 20 cm off the wing mirror. Inside there is no such reading. The
+   * body occludes the sensor, so every number the tool then reports — footprint, blind gap,
+   * coverage — describes a sensor that cannot see, and the deeper the drag went the further the
+   * old rule was from rescuing it. Being *more* wrong was what stopped the snap from firing.
+   *
+   * Alt still suppresses it, which is the way to park a sensor inside on purpose.
+   */
+  return isInsideBodySolid(p, vehicle) ? hit : null;
 }
