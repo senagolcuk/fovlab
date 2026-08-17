@@ -6,10 +6,12 @@ import {
   bodyBlocks,
   bodyMaxTop,
   bodyTopAt,
+  blockPlanDistance,
   isInsideBlockPlan,
+  isInsideBodySolid,
 } from '../profile';
 import { SNAP_DISTANCE, nearestOnBody, snapToBody } from '../snap';
-import type { Pose, Vehicle, VehicleModel } from '../types';
+import type { Pose, Vec3, Vehicle, VehicleModel } from '../types';
 
 function vehicle(model: VehicleModel): Vehicle {
   return {
@@ -215,8 +217,17 @@ describe('a rounded body is rounded all the way up', () => {
     // Straight down onto the cut corner of the cabin's bounding box: the roof is not there, so
     // the snap must find something else — never the roof height at a corner that was rounded off.
     const hit = nearestOnBody([cabin.maxX, v.width / 2, cabin.top + 0.05], v);
-    expect(isInsideBody(pose({ x: hit.position[0], y: hit.position[1], z: hit.position[2] }), v))
-      .toBe(true);
+    // On the skin, which is not the same as in the body: what the snap returns is a mounting
+    // position, and a mounting position is never occluded by the thing it is mounted on.
+    const at = (d: number) =>
+      pose({
+        x: hit.position[0] - hit.normal[0] * d,
+        y: hit.position[1] - hit.normal[1] * d,
+        z: hit.position[2] - hit.normal[2] * d,
+      });
+    expect(isInsideBody(at(0), v)).toBe(false);
+    // And it is the skin *of the body*: a millimetre inwards along the face's own normal is in.
+    expect(isInsideBody(at(0.001), v)).toBe(true);
     expect(hit.position[2]).toBeLessThanOrEqual(cabin.top + 1e-9);
   });
 
@@ -227,5 +238,59 @@ describe('a rounded body is rounded all the way up', () => {
     const r = blockRadius(base, v);
     expect(isInsideBlockPlan([v.length / 2 - r, v.width / 2 - r], base, v)).toBe(true);
     expect(isInsideBody(pose({ x: v.length / 2 - r, y: 0, z: v.clearance + 0.05 }), v)).toBe(true);
+  });
+});
+
+describe('mounted on the body versus buried in it', () => {
+  const bus: Vehicle = {
+    length: 6,
+    width: 2.2,
+    height: 2.4,
+    clearance: 0.25,
+    wheelbase: 3.6,
+    wheelRadius: 0.42,
+    shape: 'box',
+    model: 'bus',
+    cornerRadius: 0,
+  };
+  const roof = bus.clearance + bus.height;
+
+  /**
+   * The case that made the warning useless: a sensor the snap itself placed, sitting exactly on
+   * the face it was snapped to, reported as occluded by the body it is mounted on.
+   */
+  it('does not call a point on the skin inside', () => {
+    expect(isInsideBodySolid([0, bus.width / 2, 1.4], bus)).toBe(false); // flank
+    expect(isInsideBodySolid([0, -bus.width / 2, 1.4], bus)).toBe(false);
+    expect(isInsideBodySolid([bus.length / 2, 0, 1.4], bus)).toBe(false); // nose
+    expect(isInsideBodySolid([0, 0, roof], bus)).toBe(false); // roof
+    expect(isInsideBodySolid([0, 0, bus.clearance], bus)).toBe(false); // underside
+  });
+
+  it('still calls a buried point inside, a millimetre in and further', () => {
+    expect(isInsideBodySolid([0, bus.width / 2 - 0.001, 1.4], bus)).toBe(true);
+    expect(isInsideBodySolid([0, 0, roof - 0.001], bus)).toBe(true);
+    expect(isInsideBodySolid([0, 0, 1.4], bus)).toBe(true);
+  });
+
+  it('agrees with the snap: whatever it returns is on the skin, so it is not inside', () => {
+    for (const p of [
+      [0.4, 0.3, 1.9],
+      [-2, 0, 2.0],
+      [0, 0, 1.4],
+      [2.9, 1.0, 0.4],
+    ] as Vec3[]) {
+      const hit = snapToBody(p, bus, 10)!;
+      expect(hit).not.toBeNull();
+      expect(isInsideBodySolid(hit.position, bus)).toBe(false);
+    }
+  });
+
+  it('keeps the rounded plan signed, so the outline itself is distance zero', () => {
+    const rounded: Vehicle = { ...bus, shape: 'rounded', cornerRadius: 0.4 };
+    const [block] = bodyBlocks(rounded);
+    expect(blockPlanDistance([0, rounded.width / 2], block, rounded)).toBeCloseTo(0, 9);
+    expect(blockPlanDistance([0, 0], block, rounded)).toBeCloseTo(-rounded.width / 2, 9);
+    expect(blockPlanDistance([0, rounded.width / 2 + 0.25], block, rounded)).toBeCloseTo(0.25, 9);
   });
 });

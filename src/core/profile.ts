@@ -17,7 +17,6 @@
  */
 
 import { cornerRadius } from './footprint';
-import { clamp } from './rotation';
 import type { Vec2, Vec3, Vehicle, VehicleModel } from './types';
 
 export interface BodyBlock {
@@ -123,20 +122,53 @@ export function blockInnerExtents(block: BodyBlock, vehicle: Vehicle): {
 }
 
 /** Whether a plan point falls within a block's own rounded outline. */
-export function isInsideBlockPlan(p: Vec2, block: BodyBlock, vehicle: Vehicle): boolean {
+/**
+ * Signed distance from a point to a block's plan outline, in metres: negative inside, zero on it.
+ *
+ * The plan is the inner rectangle swept by a disc of radius `r`, so the standard rounded-box
+ * form applies. Written signed rather than as a yes/no because the interesting question is not
+ * always "inside?" — a mounting point lands exactly *on* the outline, and telling that apart from
+ * one buried a hand's width in needs a quantity, not a predicate.
+ */
+export function blockPlanDistance(p: Vec2, block: BodyBlock, vehicle: Vehicle): number {
   const { minX, maxX, halfWidth, r } = blockInnerExtents(block, vehicle);
-  const dx = p[0] - clamp(p[0], minX, maxX);
-  const dy = p[1] - clamp(p[1], -halfWidth, halfWidth);
-  return Math.hypot(dx, dy) <= r + 1e-12;
+  const dx = Math.abs(p[0] - (minX + maxX) / 2) - (maxX - minX) / 2;
+  const dy = Math.abs(p[1]) - halfWidth;
+  const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+  const inside = Math.min(Math.max(dx, dy), 0);
+  return outside + inside - r;
+}
+
+export function isInsideBlockPlan(p: Vec2, block: BodyBlock, vehicle: Vehicle): boolean {
+  return blockPlanDistance(p, block, vehicle) <= 1e-12;
 }
 
 /** Whether a point is within the body itself — any one of its blocks. */
-export function isInsideBodySolid(p: Vec3, vehicle: Vehicle): boolean {
+/**
+ * How far off a face a mounting point may be and still count as on it, rather than in.
+ *
+ * A micron. The snap writes the face coordinate exactly, so this only has to absorb arithmetic,
+ * not judgement: at a millimetre in, the sensor really is behind the panel and should be told so.
+ */
+export const SURFACE_TOLERANCE = 1e-6;
+
+/**
+ * Whether a point is *within* the body, as opposed to mounted on it.
+ *
+ * Strictly within, which is the whole point. The body's skin is where sensors go, and the test
+ * used to include it: every sensor the snap placed — the tool's own idea of a correct mounting —
+ * came back occluded, so the warning fired on exactly the layouts that had got it right.
+ */
+export function isInsideBodySolid(
+  p: Vec3,
+  vehicle: Vehicle,
+  margin = SURFACE_TOLERANCE,
+): boolean {
   return bodyBlocks(vehicle).some(
     (block) =>
-      p[2] >= block.bottom &&
-      p[2] <= block.top &&
-      isInsideBlockPlan([p[0], p[1]], block, vehicle),
+      p[2] > block.bottom + margin &&
+      p[2] < block.top - margin &&
+      blockPlanDistance([p[0], p[1]], block, vehicle) < -margin,
   );
 }
 
