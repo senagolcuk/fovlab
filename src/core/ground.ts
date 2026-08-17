@@ -1,9 +1,9 @@
 /**
- * Exact intersection of the FOV pyramid with the ground plane z = 0, and the readouts
+ * Exact intersection of the FOV volume with the ground plane z = 0, and the readouts
  * derived from it.
  *
- * The pyramid is convex, so the section's vertices are precisely the intersections of its
- * eight edges with the plane. Nothing is sampled, ray-marched or projected.
+ * The volume is convex, so the section's vertices are precisely the intersections of its edges
+ * with the plane. Nothing is sampled, ray-marched or projected.
  */
 
 import { footprintPolygon, isInsideFootprint } from './footprint';

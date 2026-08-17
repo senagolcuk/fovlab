@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import { effectiveSpec } from '../core/catalog';
 import { clampSpec, opticalAxis } from '../core/frustum';
 import type { SensorInstance, SensorSpec } from '../core/types';
-import type { RangeMode } from '../core/types';
 import type { DisplayOptions } from '../store/useStore';
 import { fovBuffers, toBufferGeometry } from './fovGeometry';
 
@@ -20,13 +19,11 @@ function SensorFov({
   sensor,
   catalog,
   display,
-  rangeMode,
   selected,
 }: {
   sensor: SensorInstance;
   catalog: SensorSpec[];
   display: DisplayOptions;
-  rangeMode: RangeMode;
   selected: boolean;
 }) {
   const spec = useMemo(
@@ -37,7 +34,7 @@ function SensorFov({
   const pose = sensor.pose;
 
   const geometry = useMemo(() => {
-    const buffers = fovBuffers(pose, spec, rangeMode);
+    const buffers = fovBuffers(pose, spec);
 
     const volume = new THREE.BufferGeometry();
     volume.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
@@ -93,7 +90,6 @@ function SensorFov({
     spec.hfov,
     spec.vfov,
     spec.range,
-    rangeMode,
   ]);
 
   /**

@@ -1,6 +1,6 @@
 {
   "_note": "Every entry must have a real datasheet behind it. The generic-* entries are definitional, not products, so they are verified by construction. Never add a product entry from memory: read each number off the manufacturer datasheet, set datasheetUrl, then set verified to true. An entry with verified:false is shown with a warning chip and must not be shipped.",
-  "_isx031": "The sensing-world-isx031-* entries are test fixtures, not shippable data. Only hfov is a real figure, supplied by the user: 60, 120 and 190 degrees for the three lens options. vfov and range are identical placeholders across all three variants precisely so they cannot be mistaken for per-lens data — replace them from the datasheet, add datasheetUrl, then set verified to true. Note that hfov 190 exceeds the 179.4 clamp from 03-geometry.md and is drawn at 179.4: a rectangular pyramid with a flat far plane cannot represent a lens that wide.",
+  "_isx031": "The sensing-world-isx031-* entries are test fixtures, not shippable data. Only hfov is a real figure, supplied by the user: 60, 120 and 190 degrees for the three lens options. vfov and range are identical placeholders across all three variants precisely so they cannot be mistaken for per-lens data — replace them from the datasheet, add datasheetUrl, then set verified to true. The 190 degree entry is drawn at 190: past 180 the field is swept by angle rather than projected onto an image rectangle, per 03-geometry.md.",
   "version": 1,
   "specs": [
     {

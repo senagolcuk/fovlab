@@ -3,16 +3,13 @@ import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Slider from '@mui/material/Slider';
 import Switch from '@mui/material/Switch';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
-import type { RangeMode } from '../core/types';
 import { gridExtents } from '../scene/GroundGrid';
 import { GRID_SIZE_LIMITS, useStore, type DisplayOptions } from '../store/useStore';
 import DragModeControl from './DragModeControl';
 import NumberField from './NumberField';
 import { Panel } from './Panel';
-import { CONTROL_LABEL_SX, CONTROL_LABEL_WIDTH, MONO } from '../theme';
+import { CONTROL_LABEL_SX, MONO } from '../theme';
 
 const TOGGLES: Array<[keyof DisplayOptions, string]> = [
   ['volume', 'Shaded volume'],
@@ -25,8 +22,6 @@ const TOGGLES: Array<[keyof DisplayOptions, string]> = [
 export default function DisplayPanel() {
   const display = useStore((s) => s.display);
   const setDisplay = useStore((s) => s.setDisplay);
-  const rangeMode = useStore((s) => s.rangeMode);
-  const setRangeMode = useStore((s) => s.setRangeMode);
 
   const { fineHalf, majorStep, coarseHalf } = gridExtents(display.gridSize);
 
@@ -92,37 +87,6 @@ export default function DisplayPanel() {
       <Box sx={{ mt: 2, mb: 2 }}>
         <DragModeControl />
       </Box>
-
-      {/*
-        Not a display preference: it changes the footprint, the blind gap and the coverage
-        percentage, so it is stored in the layout and travels with an export.
-      */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1 }}>
-        <Typography
-          variant="caption"
-          sx={{ ...CONTROL_LABEL_SX, width: CONTROL_LABEL_WIDTH, flexShrink: 0 }}
-        >
-          Far edge
-        </Typography>
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          value={rangeMode}
-          onChange={(_, v: RangeMode | null) => v && setRangeMode(v)}
-        >
-          <ToggleButton value="radial" sx={{ px: 1.25, py: 0.25 }}>
-            Radial
-          </ToggleButton>
-          <ToggleButton value="axis" sx={{ px: 1.25, py: 0.25 }}>
-            Axial
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-      <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>
-        {rangeMode === 'radial'
-          ? 'Every direction stops at the stated range: the footprint is a fan.'
-          : 'Measured along the optical axis, so the corners reach past the stated range.'}
-      </Typography>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 1, mt: 2 }}>
         {TOGGLES.map(([key, label]) => (

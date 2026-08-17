@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { frustum } from '../core/frustum';
 import { groundPolygon } from '../core/ground';
-import type { FovSpec, Pose, RangeMode } from '../core/types';
+import type { FovSpec, Pose } from '../core/types';
 
 /** Lifted off the ground plane just enough to beat the grid in the depth test. */
 export const GROUND_LIFT = 0.005;
@@ -29,13 +29,8 @@ export interface FovBuffers {
   footprint: IndexedGeometry | null;
 }
 
-export function fovBuffers(
-  pose: Pose,
-  spec: FovSpec,
-  mode: RangeMode,
-  lift = GROUND_LIFT,
-): FovBuffers {
-  const f = frustum(pose, spec, mode);
+export function fovBuffers(pose: Pose, spec: FovSpec, lift = GROUND_LIFT): FovBuffers {
+  const f = frustum(pose, spec);
 
   const positions: number[] = [];
   for (const v of f.vertices) positions.push(v[0], v[1], v[2]);

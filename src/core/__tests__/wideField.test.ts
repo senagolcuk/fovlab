@@ -50,15 +50,15 @@ describe('wide fields', () => {
       [220, 40],
       [270, 120],
     ]) {
-      const s = sweep(frustum(pose(), { hfov, vfov, range: 1 }, 'radial'));
+      const s = sweep(frustum(pose(), { hfov, vfov, range: 1 }));
       expect(s.azimuth).toBeCloseTo(hfov, 6);
       expect(s.elevation).toBeCloseTo(vfov, 6);
     }
   });
 
-  it('keeps every point at the range, the same promise radial makes anywhere else', () => {
+  it('keeps every point at the range, as the far surface does at any width', () => {
     const p = pose({ x: 3, y: -2, z: 1.4, yaw: 37, pitch: -18, roll: 12 });
-    const f = frustum(p, { hfov: 190, vfov: 70, range: 12 }, 'radial');
+    const f = frustum(p, { hfov: 190, vfov: 70, range: 12 });
     for (const v of f.vertices.slice(1)) {
       expect(Math.hypot(v[0] - p.x, v[1] - p.y, v[2] - p.z)).toBeCloseTo(12, 9);
     }
@@ -67,7 +67,7 @@ describe('wide fields', () => {
   it('reaches behind its own apex, which is the whole point of exceeding 180°', () => {
     // 190° horizontal on a bumper: 5° of the field lies behind the mounting point on each side.
     const apexX = 2;
-    const f = frustum(pose({ x: apexX, z: 0.6 }), { hfov: 190, vfov: 60, range: 10 }, 'radial');
+    const f = frustum(pose({ x: apexX, z: 0.6 }), { hfov: 190, vfov: 60, range: 10 });
     const poly = groundPolygon(f)!;
     const backward = apexX - Math.min(...poly.map((q) => q[0]));
     expect(backward).toBeGreaterThan(0);
@@ -79,20 +79,8 @@ describe('wide fields', () => {
     expect(Math.max(...poly.map((q) => Math.abs(q[1])))).toBeGreaterThan(9);
   });
 
-  it('draws a wide field radially even when the range mode says axis', () => {
-    // A flat plane at `range` along the boresight is unreachable more than 90° off it, so there
-    // is no axis surface to choose. Falling back beats drawing a narrower sensor.
-    const spec = { hfov: 190, vfov: 60, range: 10 };
-    expect(frustum(pose(), spec, 'axis')).toEqual(frustum(pose(), spec, 'radial'));
-  });
-
-  it('still honours the range mode below 180°', () => {
-    const spec = { hfov: 179, vfov: 60, range: 10 };
-    expect(frustum(pose(), spec, 'axis')).not.toEqual(frustum(pose(), spec, 'radial'));
-  });
-
   it('survives the full sphere without a NaN', () => {
-    const f = frustum(pose({ z: 5 }), { hfov: HFOV_MAX, vfov: VFOV_MAX, range: 3 }, 'radial');
+    const f = frustum(pose({ z: 5 }), { hfov: HFOV_MAX, vfov: VFOV_MAX, range: 3 });
     expect(f.vertices.every((v) => v.every(Number.isFinite))).toBe(true);
     for (const v of f.vertices.slice(1)) {
       expect(Math.hypot(v[0], v[1], v[2] - 5)).toBeCloseTo(3, 9);

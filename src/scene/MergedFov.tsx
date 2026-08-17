@@ -16,7 +16,7 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { effectiveSpec } from '../core/catalog';
 import { clampSpec } from '../core/frustum';
-import type { RangeMode, SensorInstance, SensorSpec } from '../core/types';
+import type { SensorInstance, SensorSpec } from '../core/types';
 import type { DisplayOptions } from '../store/useStore';
 import { PALETTE } from '../theme';
 import { concatIndexed, fovBuffers, toBufferGeometry, type IndexedGeometry } from './fovGeometry';
@@ -32,13 +32,11 @@ export default function MergedFov({
   sensors,
   catalog,
   display,
-  rangeMode,
   clip,
 }: {
   sensors: SensorInstance[];
   catalog: SensorSpec[];
   display: DisplayOptions;
-  rangeMode: RangeMode;
   clip: THREE.Plane[] | null;
 }) {
   /**
@@ -57,7 +55,7 @@ export default function MergedFov({
     for (const sensor of sensors) {
       if (!sensor.visible) continue;
       const spec = clampSpec(effectiveSpec(sensor, catalog));
-      const buffers = fovBuffers(sensor.pose, spec, rangeMode);
+      const buffers = fovBuffers(sensor.pose, spec);
       if (display.volume) {
         parts.push({ positions: buffers.positions, indices: buffers.triangles });
       }
@@ -66,7 +64,7 @@ export default function MergedFov({
     }
 
     return parts.length ? toBufferGeometry(concatIndexed(parts)) : null;
-  }, [sensors, catalog, rangeMode, display.volume, display.belowGround]);
+  }, [sensors, catalog, display.volume, display.belowGround]);
 
   useEffect(() => () => geometry?.dispose(), [geometry]);
 

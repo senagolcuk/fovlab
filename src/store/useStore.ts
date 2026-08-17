@@ -15,7 +15,6 @@ import { clamp } from '../core/rotation';
 import type {
   Layout,
   Pose,
-  RangeMode,
   SensorInstance,
   SensorSpec,
   Vec2,
@@ -30,7 +29,6 @@ import {
   SIDEBAR_WIDTH_LIMITS,
   loadLayout,
   loadModels,
-  DEFAULT_RANGE_MODE,
   loadPrefs,
   newId,
   savePrefs,
@@ -113,12 +111,6 @@ export interface AppState {
   userModels: SensorSpec[];
   selectedId: string | null;
 
-  /**
-   * Where `range` is measured to. Part of the layout rather than the display options: it changes
-   * the footprint, the blind gap and the coverage percentage, so a file has to carry it.
-   */
-  rangeMode: RangeMode;
-
   display: DisplayOptions;
   linkZoom: boolean;
   dragMode: DragMode;
@@ -187,7 +179,6 @@ export interface AppState {
   canRedo: boolean;
   undo(): void;
   redo(): void;
-  setRangeMode(mode: RangeMode): void;
   setDisplay(patch: Partial<DisplayOptions>): void;
   setLinkZoom(on: boolean): void;
   setDragMode(mode: DragMode): void;
@@ -333,7 +324,6 @@ export const useStore = create<AppState>()((set, get) => ({
   catalog: mergeCatalog(initialModels),
   userModels: initialModels,
   selectedId: restored?.sensors?.[0]?.id ?? null,
-  rangeMode: restored?.rangeMode ?? DEFAULT_RANGE_MODE,
 
   display: DEFAULT_DISPLAY,
   linkZoom: true,
@@ -483,7 +473,6 @@ export const useStore = create<AppState>()((set, get) => ({
       vehicle: l.vehicle,
       sensors: l.sensors,
       selectedId: l.sensors[0]?.id ?? null,
-      rangeMode: l.rangeMode ?? DEFAULT_RANGE_MODE,
       userModels,
       catalog: mergeCatalog(userModels),
     });
@@ -511,9 +500,6 @@ export const useStore = create<AppState>()((set, get) => ({
     });
   },
 
-  setRangeMode(mode) {
-    set({ rangeMode: mode });
-  },
 
   setDisplay(patch) {
     set((s) => ({ display: { ...s.display, ...patch } }));
@@ -591,7 +577,6 @@ export function currentLayout(state: AppState = useStore.getState()): Layout {
     version: 1,
     vehicle: state.vehicle,
     sensors: state.sensors,
-    rangeMode: state.rangeMode,
   };
 
   // Only the hand-made models these sensors actually use. Built-ins ship with the app, and the
@@ -618,7 +603,7 @@ function recomputeBlindReport(state: AppState) {
   for (const sensor of state.sensors) {
     if (!sensor.visible) continue;
     const poly = groundPolygon(
-      frustum(sensor.pose, effectiveSpec(sensor, state.catalog), state.rangeMode),
+      frustum(sensor.pose, effectiveSpec(sensor, state.catalog)),
     );
     if (poly) polygons.push(poly);
   }
@@ -637,8 +622,7 @@ function scheduleBlindReport(state: AppState) {
 useStore.subscribe((state, prev) => {
   if (
     state.vehicle === prev.vehicle &&
-    state.sensors === prev.sensors &&
-    state.rangeMode === prev.rangeMode
+    state.sensors === prev.sensors
   ) {
     return;
   }

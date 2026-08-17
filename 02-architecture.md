@@ -7,7 +7,7 @@ src/
   core/            pure TS — no React, no Three.js, no DOM
     types.ts       domain types
     rotation.ts    rotation matrix, vector maths
-    frustum.ts     FOV pyramid corners
+    frustum.ts     FOV volume vertices
     ground.ts      exact ground polygon, area, extents, blind gap
     footprint.ts   the body outline: box, rounded and cylinder as one family
     coverage.ts    blind spot sector report

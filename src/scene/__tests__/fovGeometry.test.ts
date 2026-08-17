@@ -51,7 +51,7 @@ describe('concatIndexed', () => {
 
 describe('fovBuffers', () => {
   it('indexes only vertices it actually emitted', () => {
-    const b = fovBuffers(pose(), spec, 'axis');
+    const b = fovBuffers(pose(), spec);
     const vertexCount = b.positions.length / 3;
     for (const i of [...b.triangles, ...b.outline]) {
       expect(i).toBeLessThan(vertexCount);
@@ -59,7 +59,7 @@ describe('fovBuffers', () => {
   });
 
   it('puts the footprint at the requested lift', () => {
-    const b = fovBuffers(pose(), spec, 'axis');
+    const b = fovBuffers(pose(), spec);
     expect(b.footprint).not.toBeNull();
     for (let i = 2; i < b.footprint!.positions.length; i += 3) {
       expect(b.footprint!.positions[i]).toBe(GROUND_LIFT);
@@ -67,20 +67,20 @@ describe('fovBuffers', () => {
   });
 
   it('accepts a lift of its own', () => {
-    const b = fovBuffers(pose(), spec, 'axis', 0.02);
+    const b = fovBuffers(pose(), spec, 0.02);
     for (let i = 2; i < b.footprint!.positions.length; i += 3) {
       expect(b.footprint!.positions[i]).toBe(0.02);
     }
   });
 
   it('reports no footprint when the volume never reaches the ground', () => {
-    const b = fovBuffers(pose({ pitch: 45 }), { hfov: 60, vfov: 30, range: 50 }, 'axis');
+    const b = fovBuffers(pose({ pitch: 45 }), { hfov: 60, vfov: 30, range: 50 });
     expect(b.footprint).toBeNull();
   });
 
   it('gives the same volume geometry the merged draw will use', () => {
     // The merge must not re-derive the shape: one sensor merged is that sensor, exactly.
-    const single = fovBuffers(pose(), spec, 'axis');
+    const single = fovBuffers(pose(), spec);
     const merged = concatIndexed([{ positions: single.positions, indices: single.triangles }]);
     expect(merged.positions).toEqual(single.positions);
     expect(merged.indices).toEqual(single.triangles);

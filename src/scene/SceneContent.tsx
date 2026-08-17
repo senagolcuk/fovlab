@@ -19,7 +19,6 @@ export default function SceneContent({ blindSectors = false }: { blindSectors?: 
   const sensors = useStore((s) => s.sensors);
   const catalog = useStore((s) => s.catalog);
   const display = useStore((s) => s.display);
-  const rangeMode = useStore((s) => s.rangeMode);
   const selectedId = useStore((s) => s.selectedId);
   const report = useStore((s) => s.blindReport);
 
@@ -44,7 +43,6 @@ export default function SceneContent({ blindSectors = false }: { blindSectors?: 
           sensors={sensors}
           catalog={catalog}
           display={display}
-          rangeMode={rangeMode}
           clip={display.belowGround ? null : GROUND_PLANE}
         />
       )}
@@ -53,7 +51,6 @@ export default function SceneContent({ blindSectors = false }: { blindSectors?: 
           key={sensor.id}
           sensor={sensor}
           catalog={catalog}
-          rangeMode={rangeMode}
           display={display}
           selected={sensor.id === selectedId}
         />

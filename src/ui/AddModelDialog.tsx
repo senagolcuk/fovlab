@@ -23,7 +23,7 @@ import type { SensorSpec } from '../core/types';
 import { useStore } from '../store/useStore';
 import NumberField from './NumberField';
 
-/** Angles a datasheet could state. Wider than the pyramid can draw is allowed and flagged. */
+/** Angles a datasheet could state, up to a full turn. Past 180° is allowed and flagged. */
 const ANGLE_MAX = 360;
 
 export default function AddModelDialog({

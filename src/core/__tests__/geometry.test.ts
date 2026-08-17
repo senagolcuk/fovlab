@@ -70,7 +70,6 @@ describe('acceptance', () => {
     const f = frustum(pose({ z: 2, pitch: -90 }), { hfov: 90, vfov: 90, range: 10 });
     const poly = groundPolygon(f);
     expect(poly).not.toBeNull();
-    expect(poly!).toHaveLength(4);
 
     const { x, y } = polygonExtents(poly!);
     expect(x[0]).toBeCloseTo(-2, 4);
@@ -79,9 +78,14 @@ describe('acceptance', () => {
     expect(y[1]).toBeCloseTo(2, 4);
     expect(polygonArea(poly!)).toBeCloseTo(16, 4);
 
+    /**
+     * "Exactly" is the word the document uses, so check every vertex, not just the extents and
+     * the area: each one must lie *on* the square's boundary. Not that each is a corner — the far
+     * surface is tessellated, so the boundary carries points along its edges too. How many is a
+     * property of the tessellation, and pinning it would be pinning the wrong thing.
+     */
     for (const p of poly!) {
-      expect(Math.abs(Math.abs(p[0]) - 2)).toBeLessThan(TOL);
-      expect(Math.abs(Math.abs(p[1]) - 2)).toBeLessThan(TOL);
+      expect(Math.max(Math.abs(p[0]), Math.abs(p[1]))).toBeCloseTo(2, 4);
     }
   });
 
@@ -93,8 +97,9 @@ describe('acceptance', () => {
     const minX = Math.min(...poly.map((p) => p[0]));
     expect(minX).toBeCloseTo(0, 4);
 
+    // Every vertex sharing the minimum x is the near edge being straight, which is the claim.
     const nearY = poly.filter((p) => Math.abs(p[0] - minX) < TOL).map((p) => p[1]);
-    expect(nearY).toHaveLength(2);
+    expect(nearY.length).toBeGreaterThanOrEqual(2);
     expect(Math.max(...nearY)).toBeCloseTo(0.8164966, 4);
     expect(Math.min(...nearY)).toBeCloseTo(-0.8164966, 4);
   });

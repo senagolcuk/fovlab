@@ -43,22 +43,19 @@ export function rotationMatrix(yawDeg: number, pitchDeg: number, rollDeg: number
 
 ## FOV volume
 
-A **rectangular cone** whose far surface is one of two things, chosen by `Layout.rangeMode`:
+A **rectangular cone** whose far surface is a spherical cap of radius `range`: every direction
+stops at exactly the stated figure, and the footprint reads as a fan.
 
-| mode | far surface | `range` means |
-|---|---|---|
-| `axis` | a flat plane at `range` along the optical axis | distance along the boresight |
-| `radial` | a spherical cap of radius `range` | distance in **every** direction |
+There used to be a second choice, `Layout.rangeMode = 'axis'`, putting a flat plane at `range`
+along the optical axis instead. It is gone, and the reason is worth keeping. Its corners reached
+`range · √(1 + tan²(h/2) + tan²(v/2))` — for a 150°×20° radar at 80 m, **309 m** — and every
+number the tool derives counted that overshoot as coverage. Past 90° off the boresight it had no
+answer at all, since a direction parallel to the plane never meets it, and the wide lenses this
+tool is mostly pointed at are past that. It was a setting with one correct answer that had to be
+got right on every layout, so it is no longer a setting.
 
-`axis` is the original model and stays exactly as specified below. It has one consequence worth
-stating: the corners reach `range · √(1 + tan²(h/2) + tan²(v/2))`, which for a 150°×20° radar at
-80 m is **309 m**. Every number the tool derives — footprint, blind gap, coverage percentage —
-counts that overshoot as coverage.
-
-`radial` sweeps the same directions but normalises them to `range`, so the corners stop where the
-datasheet says and the footprint reads as a fan. **The lateral faces are identical in both modes**
-— fixing `u = ±1` still spans a plane — which is why every acceptance test about the near edge
-holds unchanged.
+Only the far surface changed. **The directions are the same cone** — fixing `u = ±1` still spans a
+plane — which is why every acceptance test about the near edge holds unchanged.
 
 ### Fields of 180° and wider
 
@@ -79,10 +76,8 @@ drawn. Fixing `α` still spans a plane, so the sides stay flat; fixing `β` span
 a plane, so the top and bottom of the field are curved. That is the honest shape — a lens that
 sees 95° off-axis does not do so along a straight edge.
 
-Two consequences worth stating:
+One consequence worth stating:
 
-- **`axis` does not apply.** A flat plane at `range` along the boresight is unreachable for any
-  direction more than 90° off it. A wide field is drawn radially whichever mode is set.
 - **The split is at exactly 180°**, where the rectilinear model stops existing rather than merely
   straining. It strains well before: a 170° lens has `ty = 11.4`, so its top corners sit 2.9°
   above the horizon instead of `vfov/2`. A figure below 180° is still taken at face value as a
@@ -90,46 +85,38 @@ Two consequences worth stating:
   Distinguishing a 170° fisheye from a 170° rectilinear lens needs a projection model recorded per
   sensor, which the catalogue does not yet carry.
 
-The cap is tessellated (12 × 6) so the solid stays a convex polyhedron and the ground section
-below needs no new algorithm; the far edge of the footprint comes out as a fine polyline rather
-than a true arc. The wireframe draws `Frustum.outline` — the rim and four spokes — rather than
-every tessellation edge.
+The far surface is tessellated at a constant 3° per facet, so every sensor comes out equally round
+and narrow ones stay cheap; the far edge of the footprint is a fine polyline rather than a true
+arc. The wireframe draws `Frustum.outline` — the rim and four spokes — rather than every
+tessellation edge.
 
-The rest of this section describes the `axis` pyramid.
+The rest of this section describes how the volume is built.
 
-With `ty = tan(hfov/2)`, `tz = tan(vfov/2)`, `R_ = range`, the four far corners in the local
-frame are:
-
-```
-( R_,  ty·R_,  tz·R_ )
-( R_, −ty·R_,  tz·R_ )
-( R_, −ty·R_, −tz·R_ )
-( R_,  ty·R_, −tz·R_ )
-```
-
-World position of each corner = `sensorPosition + R · localCorner`.
-
-Clamp `hfov` and `vfov` to `[0.2°, 179.4°]` here so the tangent stays finite — this is the
-rectilinear model, and 179.4° is the widest one exists. The angular sweep has no such ceiling and
-is clamped only at `hfov ≤ 360°`, `vfov ≤ 180°`, where the patch would start covering ground it
-has already covered. Clamp `range` to at least 0.05 m.
-
-The pyramid has 5 vertices — apex plus 4 far corners — and 8 edges:
+Sweep a grid `u, v` over `[-1, 1]²`. Each pair gives a direction in the sensor local frame, by the
+rectilinear model below 180° and the angular one at or above it (see above):
 
 ```
-[0,1] [0,2] [0,3] [0,4]   apex to each far corner
-[1,2] [2,3] [3,4] [4,1]   around the far plane
+rectilinear:  normalise( 1, u·tan(hfov/2), v·tan(vfov/2) )
+angular:      ( cos β·cos α, cos β·sin α, sin β )    α = u·hfov/2,  β = v·vfov/2
 ```
 
-Triangulate as `0,1,2  0,2,3  0,3,4  0,4,1  1,2,3  1,3,4` — four lateral faces plus the far plane
-split in two.
+Each direction is scaled to `range`, giving a vertex of the far surface. World position of each =
+`sensorPosition + R · localVertex`.
+
+Clamp `hfov` to `[0.2°, 360°]` and `vfov` to `[0.2°, 180°]` — the point past which the patch
+starts covering ground it has already covered. Clamp `range` to at least 0.05 m.
+
+Vertex 0 is the apex. The grid is quadrangulated into triangles, its rim is walked as a loop and
+fanned back to the apex, and the result is a closed convex polyhedron — which is all the ground
+section below needs. The vertex count is not fixed: it follows the tessellation, so no test should
+pin it.
 
 ## Ground coverage polygon
 
-The exact cross-section of the pyramid with the plane `z = 0`.
+The exact cross-section of the FOV volume with the plane `z = 0`.
 
-The pyramid is convex, so the section's vertices are precisely the intersections of its 8 edges
-with the plane. Nothing else is needed.
+The volume is convex, so the section's vertices are precisely the intersections of its edges with
+the plane. Nothing else is needed.
 
 For each edge with endpoints `a`, `b`:
 - If `a.z` and `b.z` are strictly on the same side of zero, skip.

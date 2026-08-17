@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FOV, describeFov, effectiveSpec, isInherited, parseCatalog } from '../catalog';
-import {
-  AXIS_FOV_MAX,
-  clampFov,
-  clampRange,
-  clampSpec,
-  FOV_MIN,
-  HFOV_MAX,
-  localFarCorners,
-  RANGE_MIN,
-} from '../frustum';
+import { clampFov, clampRange, clampSpec, FOV_MIN, HFOV_MAX, RANGE_MIN } from '../frustum';
 import type { SensorInstance, SensorSpec } from '../types';
 import shippedCatalog from '../../data/sensors.json';
 
@@ -143,11 +134,6 @@ describe('the shipped catalogue file', () => {
     const spec = specs.find((s) => s.id === 'sensing-world-isx031-190')!;
     expect(spec.hfov).toBe(190); // what the engineer looked up
     expect(clampSpec(spec).hfov).toBe(190); // and what gets swept
-    // The rectilinear corners are the one thing that cannot follow it there.
-    expect(localFarCorners(spec)[0][1]).toBeCloseTo(
-      Math.tan((AXIS_FOV_MAX / 2) * (Math.PI / 180)) * spec.range,
-      6,
-    );
   });
 
   it('ships every generic entry verified, since they are definitional', () => {
