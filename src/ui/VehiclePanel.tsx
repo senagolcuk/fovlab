@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import Box from '@mui/material/Box';
+import DownloadIcon from '@mui/icons-material/Download';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import Switch from '@mui/material/Switch';
@@ -9,6 +10,7 @@ import Snackbar from '@mui/material/Snackbar';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
+import UploadIcon from '@mui/icons-material/Upload';
 import Typography from '@mui/material/Typography';
 import type { VehicleModel, VehicleShape } from '../core/types';
 import {
@@ -21,6 +23,13 @@ import { CONTROL_LABEL_SX, CONTROL_LABEL_WIDTH } from '../theme';
 import { useStore } from '../store/useStore';
 import NumberField from './NumberField';
 import { Panel } from './Panel';
+
+/** Trimmed so both labels, both glyphs and the reset mark share one row at 340 px. */
+const FILE_BUTTON_SX = {
+  px: 0.5,
+  minWidth: 0,
+  '& .MuiButton-startIcon': { mr: 0.5, ml: 0, '& svg': { fontSize: 17 } },
+} as const;
 
 export default function VehiclePanel() {
   const vehicle = useStore((s) => s.vehicle);
@@ -225,15 +234,26 @@ export default function VehiclePanel() {
         the reason the layout file was confusing under SENSORS: what a button saves should be what
         its panel is about.
       */}
-      <Box sx={{ display: 'flex', gap: 0.5, mt: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mt: 2 }}>
         {/*
-          No glyphs on these two. The words already say what they do, and at the narrowest the
-          sidebar goes the icons were the difference between one row and two.
+          All three on one row at the 340 px the sidebar is allowed to reach, which two labels and
+          two glyphs do not fit at the default padding. The room comes from the padding and the gap
+          beside each glyph rather than from the type, which stays the size it is everywhere else.
         */}
-        <Button size="small" onClick={() => downloadVehicle(vehicle)}>
+        <Button
+          size="small"
+          startIcon={<DownloadIcon />}
+          onClick={() => downloadVehicle(vehicle)}
+          sx={FILE_BUTTON_SX}
+        >
           Export vehicle
         </Button>
-        <Button size="small" onClick={() => fileRef.current?.click()}>
+        <Button
+          size="small"
+          startIcon={<UploadIcon />}
+          onClick={() => fileRef.current?.click()}
+          sx={FILE_BUTTON_SX}
+        >
           Import vehicle
         </Button>
         {/*
@@ -242,7 +262,7 @@ export default function VehiclePanel() {
           the narrowest the sidebar goes.
         */}
         <Tooltip title="Back to the default body. Ctrl+Z brings yours back.">
-          <IconButton size="small" color="error" onClick={() => setVehicle(DEFAULT_VEHICLE)}>
+          <IconButton size="small" color="error" sx={{ p: 0.5 }} onClick={() => setVehicle(DEFAULT_VEHICLE)}>
             <RestartAltIcon fontSize="small" />
           </IconButton>
         </Tooltip>
