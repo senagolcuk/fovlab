@@ -1,15 +1,14 @@
 import { useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
 import Switch from '@mui/material/Switch';
 import Button from '@mui/material/Button';
-import DownloadIcon from '@mui/icons-material/Download';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Snackbar from '@mui/material/Snackbar';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
-import UploadIcon from '@mui/icons-material/Upload';
 import Typography from '@mui/material/Typography';
 import type { VehicleModel, VehicleShape } from '../core/types';
 import {
@@ -227,25 +226,25 @@ export default function VehiclePanel() {
         its panel is about.
       */}
       <Box sx={{ display: 'flex', gap: 0.5, mt: 2, flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          startIcon={<DownloadIcon />}
-          onClick={() => downloadVehicle(vehicle)}
-        >
-          Export
+        {/*
+          No glyphs on these two. The words already say what they do, and at the narrowest the
+          sidebar goes the icons were the difference between one row and two.
+        */}
+        <Button size="small" onClick={() => downloadVehicle(vehicle)}>
+          Export vehicle
         </Button>
-        <Button size="small" startIcon={<UploadIcon />} onClick={() => fileRef.current?.click()}>
-          Import
+        <Button size="small" onClick={() => fileRef.current?.click()}>
+          Import vehicle
         </Button>
+        {/*
+          A mark, like the ones in the sensor row: the two file actions need their noun to say
+          which file they mean, and spelling out Reset as well pushed the row onto a second line at
+          the narrowest the sidebar goes.
+        */}
         <Tooltip title="Back to the default body. Ctrl+Z brings yours back.">
-          <Button
-            size="small"
-            color="error"
-            startIcon={<RestartAltIcon />}
-            onClick={() => setVehicle(DEFAULT_VEHICLE)}
-          >
-            Reset
-          </Button>
+          <IconButton size="small" color="error" onClick={() => setVehicle(DEFAULT_VEHICLE)}>
+            <RestartAltIcon fontSize="small" />
+          </IconButton>
         </Tooltip>
         <input
           ref={fileRef}
