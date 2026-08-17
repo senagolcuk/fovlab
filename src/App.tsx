@@ -20,7 +20,7 @@ import DeletePrompt from './ui/DeletePrompt';
 import ExportDialog from './ui/ExportDialog';
 import FullscreenButton from './ui/FullscreenButton';
 import Sidebar from './ui/Sidebar';
-import SidebarResizer from './ui/SidebarResizer';
+import SidebarResizer, { SIDEBAR_HANDLE_WIDTH } from './ui/SidebarResizer';
 import ZoomControls from './ui/ZoomControls';
 import { CARD_SHADOW, MONO } from './theme';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
@@ -178,7 +178,11 @@ export default function App() {
                   zIndex: 6,
                   top: 0,
                   left: 0,
-                  transform: sidebarOpen ? 'translate(-50%, -50%)' : 'translate(0, -50%)',
+                  // Half a handle further left: `left: 0` is the strip's right edge, and the
+                  // hairline everyone sees is in the middle of it.
+                  transform: sidebarOpen
+                    ? `translate(calc(-50% - ${SIDEBAR_HANDLE_WIDTH / 2}px), -50%)`
+                    : 'translate(0, -50%)',
                   width: 22,
                   height: 22,
                   color: 'secondary.main',

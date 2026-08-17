@@ -16,8 +16,13 @@ import Tooltip from '@mui/material/Tooltip';
 import { SIDEBAR_WIDTH_DEFAULT } from '../store/persist';
 import { useStore } from '../store/useStore';
 
-/** Wide enough to catch, narrow enough not to feel like a column of its own. */
-const GRAB_WIDTH = 7;
+/**
+ * Wide enough to catch, narrow enough not to feel like a column of its own.
+ *
+ * Exported because the hairline sits in the middle of it, so anything lining up with the divider
+ * has to know that the viewport area begins half a strip to the right of the line it sees.
+ */
+export const SIDEBAR_HANDLE_WIDTH = 7;
 
 export default function SidebarResizer() {
   const setSidebarWidth = useStore((s) => s.setSidebarWidth);
@@ -70,7 +75,7 @@ export default function SidebarResizer() {
         ref={ref}
         onDoubleClick={() => setSidebarWidth(SIDEBAR_WIDTH_DEFAULT)}
         sx={{
-          width: `${GRAB_WIDTH}px`,
+          width: `${SIDEBAR_HANDLE_WIDTH}px`,
           flexShrink: 0,
           height: '100%',
           cursor: 'col-resize',
