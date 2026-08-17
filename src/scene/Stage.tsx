@@ -191,7 +191,7 @@ function PaneZoomButton({ name, rect }: { name: ViewName; rect: Rect }) {
             <Paper
               sx={{
                 position: 'relative',
-                maxWidth: 330,
+                maxWidth: 288,
                 p: 1.75,
                 borderRadius: 1.5,
                 // No border. A border is a line the pointer has to meet exactly, and at a rounded
