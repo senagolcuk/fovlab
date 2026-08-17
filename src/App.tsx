@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import Stage from './scene/Stage';
+import { hasWebGL2 } from './scene/webgl';
 import { useStore } from './store/useStore';
 import DeletePrompt from './ui/DeletePrompt';
 import ExportDialog from './ui/ExportDialog';
@@ -43,10 +44,37 @@ function TooNarrow() {
   );
 }
 
+function NoWebGL() {
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 4,
+        textAlign: 'center',
+      }}
+    >
+      <Box sx={{ maxWidth: 460 }}>
+        <Typography variant="h6">This tool needs WebGL 2.</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+          The four viewports are drawn on the graphics card. Chrome 56, Edge 79, Firefox 51 and
+          Safari 15 are new enough. If your browser is newer than that, WebGL or hardware
+          acceleration has most likely been switched off in its settings.
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
 export default function App() {
   const wideEnough = useMediaQuery(`(min-width:${MIN_WIDTH}px)`);
   useKeyboardShortcuts();
   const [exportOpen, setExportOpen] = useState(false);
+  // Asked once: the answer cannot change while the page is open.
+  const webgl = useMemo(hasWebGL2, []);
   const linkZoom = useStore((s) => s.linkZoom);
   const setLinkZoom = useStore((s) => s.setLinkZoom);
 
@@ -109,8 +137,14 @@ export default function App() {
         <Box sx={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
           <Sidebar />
           <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0 }}>
-            <Stage />
-            <ZoomControls variant="floating" />
+            {webgl ? (
+              <>
+                <Stage />
+                <ZoomControls variant="floating" />
+              </>
+            ) : (
+              <NoWebGL />
+            )}
           </Box>
         </Box>
       ) : (

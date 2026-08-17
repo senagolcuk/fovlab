@@ -291,14 +291,28 @@ export function layoutToJson(layout: Layout): string {
   return JSON.stringify(layout, null, 2);
 }
 
-export function downloadLayout(layout: Layout, filename = 'sensor-layout.json'): void {
-  const blob = new Blob([layoutToJson(layout)], { type: 'application/json' });
+/**
+ * Hands a blob to the browser as a download.
+ *
+ * Two things here are browser workarounds rather than taste. The anchor is put in the document
+ * before it is clicked, because a detached one is ignored by Firefox. And the object URL is
+ * revoked on a timer rather than on the next line: Safari has not necessarily started reading it
+ * by the time `click` returns, and revoking early cancels the download with no error anywhere.
+ */
+export function triggerDownload(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function downloadLayout(layout: Layout, filename = 'sensor-layout.json'): void {
+  triggerDownload(new Blob([layoutToJson(layout)], { type: 'application/json' }), filename);
 }
 
 /** Rejects with a message fit to show the user. */

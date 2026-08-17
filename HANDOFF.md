@@ -308,8 +308,13 @@ untested — but **no human has used this with a real mouse**. Expect the drag f
 Two real gaps:
 
 - **Firefox and Safari have never run it.** Headless Firefox would not start on the original
-  machine. The three cross-browser fixes (wheel `deltaMode`, the number-field wheel steal, text
-  selection on drag) were verified in Chrome and by unit test only. Safari's floor is 15 (WebGL2).
+  machine. The cross-browser work was reasoned from the APIs and verified in Chrome only, so it
+  still wants a real pass on both. What is in place: `deltaMode` normalised in `scene/wheel.ts`,
+  the number-field wheel steal, `-webkit-user-select` beside the unprefixed one, the webkit
+  fullscreen spellings, `triggerDownload` putting its anchor in the document for Firefox and
+  revoking the object URL on a timer for Safari, and a WebGL 2 check that says what the tool
+  needs instead of leaving a blank canvas. WebGL 2 is the floor for the whole app — Chrome 56,
+  Edge 79, Firefox 51, Safari 15 — and everything else used here is comfortably older.
 - **Performance was never measured on real GPU hardware.** `05-build-plan.md` asks for 20 sensors at
   60 fps. Memoisation and geometry disposal are in place; the measurement is not.
 
