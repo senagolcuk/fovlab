@@ -13,26 +13,13 @@
 import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
-import { anchorViewsForViewportGrowth } from '../scene/anchorViews';
-import { SIDEBAR_WIDTH_DEFAULT, SIDEBAR_WIDTH_LIMITS } from '../store/persist';
-import { useStore } from '../store/useStore';
+import { SIDEBAR_HANDLE_WIDTH, SIDEBAR_WIDTH_DEFAULT } from '../store/persist';
 
-/** Wide enough to catch, narrow enough not to feel like a column of its own. */
-const GRAB_WIDTH = 7;
+export default function SidebarResizer({ onResize }: { onResize: (width: number) => void }) {
+  // Held in a ref so the listeners are attached once and still call the current handler.
+  const resize = useRef(onResize);
+  resize.current = onResize;
 
-/**
- * Anchors the viewports, then moves the edge — in that order and in one handler, so no frame ever
- * sees the new layout with the old cameras.
- */
-function resizeTo(next: number): void {
-  const store = useStore.getState();
-  const clamped = Math.min(Math.max(next, SIDEBAR_WIDTH_LIMITS[0]), SIDEBAR_WIDTH_LIMITS[1]);
-  if (clamped === store.sidebarWidth) return;
-  anchorViewsForViewportGrowth(store.sidebarWidth - clamped);
-  store.setSidebarWidth(clamped);
-}
-
-export default function SidebarResizer() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,7 +39,7 @@ export default function SidebarResizer() {
 
     const onPointerMove = (e: PointerEvent) => {
       // The sidebar starts at the left edge of the window, so the pointer's x *is* the width.
-      if (dragging) resizeTo(e.clientX);
+      if (dragging) resize.current(e.clientX);
     };
 
     const stop = (e: PointerEvent) => {
@@ -80,9 +67,9 @@ export default function SidebarResizer() {
     <Tooltip title="Drag to resize · double-click to reset" enterDelay={700}>
       <Box
         ref={ref}
-        onDoubleClick={() => resizeTo(SIDEBAR_WIDTH_DEFAULT)}
+        onDoubleClick={() => resize.current(SIDEBAR_WIDTH_DEFAULT)}
         sx={{
-          width: `${GRAB_WIDTH}px`,
+          width: `${SIDEBAR_HANDLE_WIDTH}px`,
           flexShrink: 0,
           height: '100%',
           cursor: 'col-resize',

@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Collapse from '@mui/material/Collapse';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import Toolbar from '@mui/material/Toolbar';
@@ -15,6 +14,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Stage from './scene/Stage';
 import { anchorViewsForViewportGrowth } from './scene/anchorViews';
+import { SIDEBAR_HANDLE_WIDTH, SIDEBAR_WIDTH_LIMITS } from './store/persist';
 import { hasWebGL2 } from './scene/webgl';
 import { useStore } from './store/useStore';
 import DeletePrompt from './ui/DeletePrompt';
@@ -27,6 +27,8 @@ import { CARD_SHADOW, MONO } from './theme';
 import { useKeyboardShortcuts } from './ui/useKeyboardShortcuts';
 
 const MIN_WIDTH = 1280;
+/** How long the panels take to slide out of the way. */
+const PANEL_SLIDE_MS = 240;
 
 function TooNarrow() {
   return (
@@ -84,12 +86,74 @@ export default function App() {
   const webgl = useMemo(hasWebGL2, []);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const sidebarWidth = useStore((s) => s.sidebarWidth);
+  const sidebarSpan = useStore((s) => s.sidebarSpan);
   const setSidebarOpen = useStore((s) => s.setSidebarOpen);
 
-  /** Anchor first, then move the edge, so the cameras and the layout change together. */
+  /**
+   * The only measured quantity on this screen, and it only changes with the window.
+   *
+   * Everything the sidebar affects is arithmetic from `sidebarSpan` instead, so the panels, the
+   * space left for the viewports and the pane tiling inside them all move in one render. Measuring
+   * that space instead put it a frame behind whatever moved it, which is what made the drawing
+   * wobble through a drag.
+   */
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [row, setRow] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const read = () => setRow({ width: el.clientWidth, height: el.clientHeight });
+    const observer = new ResizeObserver(read);
+    observer.observe(el);
+    read();
+    return () => observer.disconnect();
+  }, []);
+
+  const viewportWidth = Math.max(0, row.width - sidebarSpan);
+
+  /** Moves the edge and holds the drawing still, in one update. */
+  const setSpan = (next: number) => {
+    const store = useStore.getState();
+    anchorViewsForViewportGrowth(
+      Math.max(0, row.width - store.sidebarSpan),
+      Math.max(0, row.width - next),
+      row.height,
+    );
+    store.setSidebarSpan(next);
+  };
+
+  const onResize = (width: number) => {
+    const clamped = Math.min(
+      Math.max(width, SIDEBAR_WIDTH_LIMITS[0]),
+      SIDEBAR_WIDTH_LIMITS[1],
+    );
+    if (clamped === useStore.getState().sidebarWidth) return;
+    useStore.getState().setSidebarWidth(clamped);
+    setSpan(clamped + SIDEBAR_HANDLE_WIDTH);
+  };
+
+  /**
+   * Sweeps the span rather than transitioning a width in CSS.
+   *
+   * A CSS transition animates the element and leaves the cameras behind it; sweeping the one
+   * number every frame keeps them in step, so the panels slide away and the drawing stays put.
+   */
+  const tween = useRef<number>();
   const togglePanels = () => {
-    anchorViewsForViewportGrowth(sidebarOpen ? sidebarWidth : -sidebarWidth);
-    setSidebarOpen(!sidebarOpen);
+    const open = !sidebarOpen;
+    setSidebarOpen(open);
+    const target = open ? sidebarWidth + SIDEBAR_HANDLE_WIDTH : 0;
+    const start = useStore.getState().sidebarSpan;
+    const began = performance.now();
+    if (tween.current) cancelAnimationFrame(tween.current);
+    const step = () => {
+      const t = Math.min(1, (performance.now() - began) / PANEL_SLIDE_MS);
+      // Ease out, so it leaves briskly and arrives softly.
+      setSpan(start + (target - start) * (1 - (1 - t) ** 3));
+      if (t < 1) tween.current = requestAnimationFrame(step);
+    };
+    step();
   };
   const linkZoom = useStore((s) => s.linkZoom);
   const setLinkZoom = useStore((s) => s.setLinkZoom);
@@ -150,24 +214,23 @@ export default function App() {
       </AppBar>
 
       {wideEnough ? (
-        <Box sx={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
+        <Box ref={rowRef} sx={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
           {/*
-            Collapsed by width rather than unmounted, so the panels slide out of the way and the
-            viewports grow into the space instead of everything jumping at once. The content keeps
-            its own width throughout, so nothing reflows on the way.
+            Clipped to the span rather than transitioned, so the panels slide out of view while
+            every frame of the slide is a layout the cameras already agree with.
           */}
-          <Collapse
-            in={sidebarOpen}
-            orientation="horizontal"
-            timeout={260}
-            easing="cubic-bezier(0.4, 0, 0.2, 1)"
-            sx={{ height: '100%', flexShrink: 0 }}
+          <Box
+            sx={{
+              width: `${sidebarSpan}px`,
+              flexShrink: 0,
+              height: '100%',
+              overflow: 'hidden',
+              display: 'flex',
+            }}
           >
-            <Box sx={{ display: 'flex', height: '100%' }}>
-              <Sidebar />
-              <SidebarResizer />
-            </Box>
-          </Collapse>
+            <Sidebar />
+            <SidebarResizer onResize={onResize} />
+          </Box>
           <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0 }}>
             {/*
               On the divider itself, which is the edge it moves. Anchored to the left of the
@@ -206,7 +269,7 @@ export default function App() {
             </Tooltip>
             {webgl ? (
               <>
-                <Stage />
+                <Stage width={viewportWidth} height={row.height} />
                 <ZoomControls variant="floating" />
               </>
             ) : (

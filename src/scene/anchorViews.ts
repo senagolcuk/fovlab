@@ -9,18 +9,17 @@
 
 import { VIEW_NAMES, paneCentreShifts, viewportRects } from '../core/viewport';
 import { useStore } from '../store/useStore';
-import { STAGE_DOM_ID } from './Stage';
 import { isoMetresPerPixel, isoScreenAxes } from './views';
 
-/** `growth` is how many pixels the viewport area is about to gain from the sidebar. */
-export function anchorViewsForViewportGrowth(growth: number): void {
-  if (growth === 0) return;
-  const host = document.getElementById(STAGE_DOM_ID);
-  if (!host) return;
-
-  const width = host.clientWidth;
-  const height = host.clientHeight;
-  if (width === 0 || height === 0) return;
+/**
+ * `from` and `to` are the viewport area's width before and after. Passed in rather than measured:
+ * the caller knows both before the layout moves, and a measurement here would be a frame stale
+ * again.
+ */
+export function anchorViewsForViewportGrowth(from: number, to: number, height: number): void {
+  const growth = to - from;
+  if (growth === 0 || from <= 0 || to <= 0 || height <= 0) return;
+  const width = from;
 
   const store = useStore.getState();
   const shifts = paneCentreShifts(

@@ -27,6 +27,7 @@ import catalogJson from '../data/sensors.json';
 import {
   DEFAULT_PREFS,
   DEFAULT_VEHICLE,
+  SIDEBAR_HANDLE_WIDTH,
   SIDEBAR_WIDTH_LIMITS,
   loadLayout,
   loadModels,
@@ -176,6 +177,16 @@ export interface AppState {
   sidebarOpen: boolean;
   setSidebarWidth(px: number): void;
   setSidebarOpen(open: boolean): void;
+
+  /**
+   * How much room the sidebar occupies right now, handle included.
+   *
+   * Transient, and the single number the whole left edge is derived from: the panels' clip width,
+   * what is left for the viewports, and the pane tiling inside them. Open and close animate it,
+   * which is why they animate consistently — one value moving means everything moves together.
+   */
+  sidebarSpan: number;
+  setSidebarSpan(px: number): void;
   /** Opens the prompt, or deletes outright if the prompt has been turned off. */
   requestDeleteSensor(id: string): void;
   confirmPendingDelete(dontAskAgain: boolean): void;
@@ -350,6 +361,13 @@ export const useStore = create<AppState>()((set, get) => ({
   askBeforeDelete: startingPrefs.askBeforeDelete,
   sidebarWidth: startingPrefs.sidebarWidth,
   sidebarOpen: startingPrefs.sidebarOpen,
+  sidebarSpan: startingPrefs.sidebarOpen
+    ? startingPrefs.sidebarWidth + SIDEBAR_HANDLE_WIDTH
+    : 0,
+
+  setSidebarSpan(px) {
+    set({ sidebarSpan: Math.max(0, px) });
+  },
 
   setSidebarWidth(px) {
     set({ sidebarWidth: clamp(px, ...SIDEBAR_WIDTH_LIMITS) });

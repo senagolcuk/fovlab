@@ -69,7 +69,25 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
 3. **`resize={{ scroll: false, debounce: 0 }}` on the `<Canvas>`.** Views scissor against the canvas
    rect, so a stale measurement offsets every pane.
 
-4. **The canvas keeps `pointer-events: none` at all times.** The panes are DOM divs beneath it,
+4. **The viewport area's size is computed, never measured.** `Stage` takes its width and height as
+   props. Only the row that holds the sidebar and the viewports is measured, and that changes only
+   with the window; everything the sidebar affects is arithmetic from one transient number,
+   `sidebarSpan`.
+
+   *Two earlier versions measured it with a `ResizeObserver` and both made the drawing wobble
+   through a sidebar drag.* A measurement is a frame behind the layout that caused it, so one of
+   the pane rectangles and the cameras was always stale with respect to the other — correcting the
+   cameras late showed the new rectangles with the old cameras, and correcting them early showed
+   the old rectangles with the new cameras. Measured over a five-step drag, the vehicle's window x
+   read 675, 672, 669, 675, 675. Computed, it reads 675 at every step and through all 26 frames of
+   the close animation.
+
+   For the same reason open and close sweep `sidebarSpan` frame by frame rather than transitioning
+   a width in CSS: a CSS transition animates the element and leaves the cameras behind it.
+   `paneCentreShifts` in `core/viewport.ts` is what keeps the drawing still — it takes the two
+   tilings and how far the area's own left edge travels, and needs no measurement at all.
+
+5. **The canvas keeps `pointer-events: none` at all times.** The panes are DOM divs beneath it,
    which is what lets each pane own its own pan, zoom and orbit without fighting the 3D event
    system.
 
@@ -89,25 +107,25 @@ A fresh reader is likely to try to undo each of these. Each exists for a reason 
    the controls set `axis` during their hover pass on the preceding pointermove, so reading it on
    pointerdown decides the winner without depending on listener registration order.
 
-5. **The catalogue stores FOV values wider than `FOV_MAX` (179.4°) unclamped.** `parseCatalog` keeps
+6. **The catalogue stores FOV values wider than `FOV_MAX` (179.4°) unclamped.** `parseCatalog` keeps
    what the datasheet says; `clampSpec` limits what the pyramid can draw. The editor shows the real
    figure with "drawn at 179.4°" beneath it. A rectangular pyramid with a flat far plane genuinely
    cannot represent a 190° lens — showing the engineer a number they never looked up is worse than
    admitting the limit.
 
-6. **Dependencies are pinned to Vite 5 and Vitest 2.** The original machine runs Node 18. On
+7. **Dependencies are pinned to Vite 5 and Vitest 2.** The original machine runs Node 18. On
    Node 20+ the majors named in `05-build-plan.md` work as written; upgrade only deliberately.
 
-7. **Pure modules exist that `02-architecture.md` does not list**, all tested: `core/viewport.ts`
+8. **Pure modules exist that `02-architecture.md` does not list**, all tested: `core/viewport.ts`
    (the four-pane tiling, so acceptance test 10 covers the layout the app really uses),
    `core/snap.ts` (snap to the body) and `core/footprint.ts` (the body outline).
 
-8. **`SensorFov` is memoised and disposes its geometry.** `updatePose` replaces only the sensor it
+9. **`SensorFov` is memoised and disposes its geometry.** `updatePose` replaces only the sensor it
    touches, so untouched sensors skip the render. r3f only disposes objects it created itself, so
    the per-frame geometry handed to it as a prop is disposed by hand — without that, a long drag
    leaks one buffer set per frame. `GroundGrid` and `Vehicle` dispose theirs the same way.
 
-9. **Wheel deltas go through `scene/wheel.ts` before they are used.** Chrome and Safari report
+10. **Wheel deltas go through `scene/wheel.ts` before they are used.** Chrome and Safari report
    pixels, Firefox reports lines. Reading `deltaY` raw made one Firefox notch about a thirtieth of
    a Chrome one, so zoom looked broken rather than slow.
 

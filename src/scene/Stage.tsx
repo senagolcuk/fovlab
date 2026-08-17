@@ -295,20 +295,17 @@ function Pane({
   );
 }
 
-export default function Stage() {
+export default function Stage({ width, height }: { width: number; height: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const el = hostRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => {
-      setSize({ width: el.clientWidth, height: el.clientHeight });
-    });
-    observer.observe(el);
-    setSize({ width: el.clientWidth, height: el.clientHeight });
-    return () => observer.disconnect();
-  }, []);
+  /**
+   * Given, not measured.
+   *
+   * This used to come from a `ResizeObserver` on the host, and that is a frame behind the layout:
+   * a sidebar drag moved the host, the panes kept last frame's rectangles, and whichever of the
+   * two the cameras agreed with, the drawing jumped against the other. Taking the size as a prop
+   * puts the sidebar, the pane rectangles and the cameras in one render, from one number.
+   */
+  const size = { width, height };
 
   const maximizedView = useStore((s) => s.maximizedView);
   const rects = useMemo(
