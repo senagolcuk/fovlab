@@ -4,6 +4,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
+import { DEFAULT_FOV } from '../../core/catalog';
 import { isInsideBody } from '../../core/ground';
 import type { Layout, SensorInstance } from '../../core/types';
 import { DEFAULT_VEHICLE, layoutToJson, sanitizeLayout } from '../persist';
@@ -36,7 +37,9 @@ describe('sensor lifecycle', () => {
     expect(s.pose.x).toBeCloseTo(DEFAULT_VEHICLE.length / 2 + 0.02, 6);
     expect(isInsideBody(s.pose, DEFAULT_VEHICLE)).toBe(false); // no warning on a fresh sensor
     expect(s.specId).toBeNull();
-    expect(s.custom).toEqual({ hfov: 90, vfov: 60, range: 50 });
+    // Against the constant, not a copy of its values: keeping two of these apart is how the
+    // default quietly became 50 in one place and 10 in the other.
+    expect(s.custom).toEqual(DEFAULT_FOV);
   });
 
   it('gives consecutive sensors different colours', () => {

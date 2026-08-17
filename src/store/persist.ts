@@ -337,6 +337,36 @@ export function triggerDownload(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/**
+ * The vehicle on its own, for carrying a body between layouts.
+ *
+ * `kind` is what tells the two files apart on the way back in. A full layout is accepted by the
+ * vehicle importer as well — taking the body out of a saved layout is a reasonable thing to want,
+ * and refusing the file for having sensors in it would be pedantry.
+ */
+export function downloadVehicle(vehicle: Vehicle, filename = 'vehicle.json'): void {
+  const body = JSON.stringify({ version: 1, kind: 'vehicle', vehicle }, null, 2);
+  triggerDownload(new Blob([body], { type: 'application/json' }), filename);
+}
+
+/** Rejects with a message fit to show the engineer. */
+export async function readVehicleFile(file: File): Promise<Vehicle> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await file.text());
+  } catch {
+    throw new Error('That file is not valid JSON.');
+  }
+  const record = parsed as { version?: unknown; vehicle?: unknown } | null;
+  if (!record || typeof record !== 'object' || record.version !== 1) {
+    throw new Error('That file is not a version 1 vehicle or layout.');
+  }
+  if (!record.vehicle || typeof record.vehicle !== 'object') {
+    throw new Error('That file has no vehicle in it.');
+  }
+  return sanitizeVehicle(record.vehicle);
+}
+
 export function downloadLayout(layout: Layout, filename = 'sensor-layout.json'): void {
   triggerDownload(new Blob([layoutToJson(layout)], { type: 'application/json' }), filename);
 }

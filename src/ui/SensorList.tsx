@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -9,18 +9,15 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
-import DownloadIcon from '@mui/icons-material/Download';
 import IconButton from '@mui/material/IconButton';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import Snackbar from '@mui/material/Snackbar';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import UploadIcon from '@mui/icons-material/Upload';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { describeFov, effectiveSpec } from '../core/catalog';
-import { currentLayout, useStore } from '../store/useStore';
-import { downloadLayout, readLayoutFile } from '../store/persist';
+import { useStore } from '../store/useStore';
 import { Panel } from './Panel';
 import SensorEditor from './SensorEditor';
 import { MONO } from '../theme';
@@ -121,11 +118,9 @@ export default function SensorList() {
   const selectedId = useStore((s) => s.selectedId);
   const addSensor = useStore((s) => s.addSensor);
   const duplicateSensor = useStore((s) => s.duplicateSensor);
-  const importLayout = useStore((s) => s.importLayout);
   const clearSensors = useStore((s) => s.clearSensors);
   const requestFit = useStore((s) => s.requestFit);
   const select = useStore((s) => s.select);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   /**
    * Which row is open, tracked here rather than read off the selection.
@@ -157,16 +152,6 @@ export default function SensorList() {
     clearSensors();
     requestFit();
     setConfirmReset(false);
-  };
-
-  const onImport = async (file: File | undefined) => {
-    if (!file) return;
-    try {
-      importLayout(await readLayoutFile(file));
-      requestFit();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'That file could not be read.');
-    }
   };
 
   return (
@@ -204,16 +189,6 @@ export default function SensorList() {
         </Button>
         <Button
           size="small"
-          startIcon={<DownloadIcon />}
-          onClick={() => downloadLayout(currentLayout())}
-        >
-          Export
-        </Button>
-        <Button size="small" startIcon={<UploadIcon />} onClick={() => fileRef.current?.click()}>
-          Import
-        </Button>
-        <Button
-          size="small"
           color="error"
           startIcon={<RestartAltIcon />}
           // Nothing to lose when the list is already empty, so skip straight to the refit.
@@ -221,16 +196,6 @@ export default function SensorList() {
         >
           Reset
         </Button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={(e) => {
-            void onImport(e.target.files?.[0]);
-            e.target.value = '';
-          }}
-        />
       </Box>
 
       <Dialog open={confirmReset} onClose={() => setConfirmReset(false)}>

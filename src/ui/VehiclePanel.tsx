@@ -1,11 +1,23 @@
+import { useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
+import Button from '@mui/material/Button';
+import DownloadIcon from '@mui/icons-material/Download';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import Snackbar from '@mui/material/Snackbar';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Tooltip from '@mui/material/Tooltip';
+import UploadIcon from '@mui/icons-material/Upload';
 import Typography from '@mui/material/Typography';
 import type { VehicleModel, VehicleShape } from '../core/types';
-import { LIMITS } from '../store/persist';
+import {
+  DEFAULT_VEHICLE,
+  LIMITS,
+  downloadVehicle,
+  readVehicleFile,
+} from '../store/persist';
 import { CONTROL_LABEL_SX, CONTROL_LABEL_WIDTH } from '../theme';
 import { useStore } from '../store/useStore';
 import NumberField from './NumberField';
@@ -14,6 +26,17 @@ import { Panel } from './Panel';
 export default function VehiclePanel() {
   const vehicle = useStore((s) => s.vehicle);
   const setVehicle = useStore((s) => s.setVehicle);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const onImport = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      setVehicle(await readVehicleFile(file));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'That file could not be read.');
+    }
+  };
   const display = useStore((s) => s.display);
   const setDisplay = useStore((s) => s.setDisplay);
   /** The radius the geometry will actually use, whatever the field says. */
@@ -198,6 +221,51 @@ export default function VehiclePanel() {
           slotProps={{ typography: { variant: 'body2' } }}
         />
       </Box>
+      {/*
+        The body alone, so it can be carried between layouts. Separate from the layout file for
+        the reason the layout file was confusing under SENSORS: what a button saves should be what
+        its panel is about.
+      */}
+      <Box sx={{ display: 'flex', gap: 0.5, mt: 2, flexWrap: 'wrap' }}>
+        <Button
+          size="small"
+          startIcon={<DownloadIcon />}
+          onClick={() => downloadVehicle(vehicle)}
+        >
+          Export
+        </Button>
+        <Button size="small" startIcon={<UploadIcon />} onClick={() => fileRef.current?.click()}>
+          Import
+        </Button>
+        <Tooltip title="Back to the default body. Ctrl+Z brings yours back.">
+          <Button
+            size="small"
+            color="error"
+            startIcon={<RestartAltIcon />}
+            onClick={() => setVehicle(DEFAULT_VEHICLE)}
+          >
+            Reset
+          </Button>
+        </Tooltip>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          hidden
+          onChange={(e) => {
+            void onImport(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
+      </Box>
+
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        message={error ?? ''}
+      />
+
     </Panel>
   );
 }
