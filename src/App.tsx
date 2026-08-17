@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import Toolbar from '@mui/material/Toolbar';
@@ -10,7 +11,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import VerticalSplitOutlinedIcon from '@mui/icons-material/VerticalSplitOutlined';
 import Stage from './scene/Stage';
 import { hasWebGL2 } from './scene/webgl';
 import { useStore } from './store/useStore';
@@ -92,24 +93,6 @@ export default function App() {
         sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
       >
         <Toolbar variant="dense" sx={{ gap: 2 }}>
-          {/*
-            In the bar rather than in the sidebar: it has to be reachable in both states, and a
-            control that moves or disappears when it is used is one people stop trusting.
-          */}
-          <Tooltip title={sidebarOpen ? 'Hide the panels' : 'Show the panels'}>
-            <IconButton
-              size="small"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              sx={{
-                color: 'secondary.main',
-                ml: -1,
-                mr: -1,
-                transform: sidebarOpen ? 'none' : 'rotate(180deg)',
-              }}
-            >
-              <MenuOpenIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
           <Typography
             variant="h6"
             sx={{
@@ -153,18 +136,44 @@ export default function App() {
           >
             Export
           </Button>
+          {/*
+            Next to fullscreen because they answer the same question — how much of the window the
+            drawing gets. In the bar rather than on the sidebar so that it is in one place whether
+            the panels are showing or not: a control that moves when it is used is one people stop
+            trusting.
+          */}
+          <Tooltip title={sidebarOpen ? 'Hide the panels' : 'Show the panels'}>
+            <IconButton
+              size="small"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              sx={{ color: sidebarOpen ? 'primary.main' : 'secondary.main' }}
+            >
+              <VerticalSplitOutlinedIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <FullscreenButton />
         </Toolbar>
       </AppBar>
 
       {wideEnough ? (
         <Box sx={{ flexGrow: 1, display: 'flex', minHeight: 0 }}>
-          {sidebarOpen && (
-            <>
+          {/*
+            Collapsed by width rather than unmounted, so the panels slide out of the way and the
+            viewports grow into the space instead of everything jumping at once. The content keeps
+            its own width throughout, so nothing reflows on the way.
+          */}
+          <Collapse
+            in={sidebarOpen}
+            orientation="horizontal"
+            timeout={260}
+            easing="cubic-bezier(0.4, 0, 0.2, 1)"
+            sx={{ height: '100%', flexShrink: 0 }}
+          >
+            <Box sx={{ display: 'flex', height: '100%' }}>
               <Sidebar />
               <SidebarResizer />
-            </>
-          )}
+            </Box>
+          </Collapse>
           <Box sx={{ flexGrow: 1, position: 'relative', minWidth: 0 }}>
             {webgl ? (
               <>
