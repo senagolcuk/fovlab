@@ -47,3 +47,37 @@ export function viewportRects(
     ISO: { x: leftW, y: topH, width: rightW, height: bottomH },
   };
 }
+
+/**
+ * How far each pane's centre moves when the viewport area changes.
+ *
+ * `leftShift` is how far the area's own left edge moves, which is not zero when a sidebar beside
+ * it grows or shrinks. A pane holds the world point named by its pan at its centre, so this is
+ * exactly how far the drawing would slide if nothing were done about it — and therefore how far
+ * to pan to leave it alone.
+ *
+ * Pure arithmetic on two tilings rather than two measurements of the DOM, so the answer is
+ * available *before* the layout changes. Correcting afterwards is a frame late, and a frame late
+ * on every step of a drag is a wobble.
+ */
+export function paneCentreShifts(
+  before: Record<ViewName, Rect>,
+  after: Record<ViewName, Rect>,
+  leftShift: number,
+): Record<ViewName, { dx: number; dy: number }> {
+  const out = {} as Record<ViewName, { dx: number; dy: number }>;
+  for (const name of VIEW_NAMES) {
+    const b = before[name];
+    const a = after[name];
+    // A pane with no area on either side has no position to preserve.
+    if (b.width === 0 || a.width === 0) {
+      out[name] = { dx: 0, dy: 0 };
+      continue;
+    }
+    out[name] = {
+      dx: leftShift + a.x + a.width / 2 - (b.x + b.width / 2),
+      dy: a.y + a.height / 2 - (b.y + b.height / 2),
+    };
+  }
+  return out;
+}

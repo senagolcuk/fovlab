@@ -13,14 +13,26 @@
 import { useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Tooltip from '@mui/material/Tooltip';
-import { SIDEBAR_WIDTH_DEFAULT } from '../store/persist';
+import { anchorViewsForViewportGrowth } from '../scene/anchorViews';
+import { SIDEBAR_WIDTH_DEFAULT, SIDEBAR_WIDTH_LIMITS } from '../store/persist';
 import { useStore } from '../store/useStore';
 
 /** Wide enough to catch, narrow enough not to feel like a column of its own. */
 const GRAB_WIDTH = 7;
 
+/**
+ * Anchors the viewports, then moves the edge — in that order and in one handler, so no frame ever
+ * sees the new layout with the old cameras.
+ */
+function resizeTo(next: number): void {
+  const store = useStore.getState();
+  const clamped = Math.min(Math.max(next, SIDEBAR_WIDTH_LIMITS[0]), SIDEBAR_WIDTH_LIMITS[1]);
+  if (clamped === store.sidebarWidth) return;
+  anchorViewsForViewportGrowth(store.sidebarWidth - clamped);
+  store.setSidebarWidth(clamped);
+}
+
 export default function SidebarResizer() {
-  const setSidebarWidth = useStore((s) => s.setSidebarWidth);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +52,7 @@ export default function SidebarResizer() {
 
     const onPointerMove = (e: PointerEvent) => {
       // The sidebar starts at the left edge of the window, so the pointer's x *is* the width.
-      if (dragging) setSidebarWidth(e.clientX);
+      if (dragging) resizeTo(e.clientX);
     };
 
     const stop = (e: PointerEvent) => {
@@ -62,13 +74,13 @@ export default function SidebarResizer() {
       el.removeEventListener('pointercancel', stop);
       document.body.style.cursor = '';
     };
-  }, [setSidebarWidth]);
+  }, []);
 
   return (
     <Tooltip title="Drag to resize · double-click to reset" enterDelay={700}>
       <Box
         ref={ref}
-        onDoubleClick={() => setSidebarWidth(SIDEBAR_WIDTH_DEFAULT)}
+        onDoubleClick={() => resizeTo(SIDEBAR_WIDTH_DEFAULT)}
         sx={{
           width: `${GRAB_WIDTH}px`,
           flexShrink: 0,

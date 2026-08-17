@@ -14,6 +14,7 @@ import Tooltip from '@mui/material/Tooltip';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Stage from './scene/Stage';
+import { anchorViewsForViewportGrowth } from './scene/anchorViews';
 import { hasWebGL2 } from './scene/webgl';
 import { useStore } from './store/useStore';
 import DeletePrompt from './ui/DeletePrompt';
@@ -82,7 +83,14 @@ export default function App() {
   // Asked once: the answer cannot change while the page is open.
   const webgl = useMemo(hasWebGL2, []);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
+  const sidebarWidth = useStore((s) => s.sidebarWidth);
   const setSidebarOpen = useStore((s) => s.setSidebarOpen);
+
+  /** Anchor first, then move the edge, so the cameras and the layout change together. */
+  const togglePanels = () => {
+    anchorViewsForViewportGrowth(sidebarOpen ? sidebarWidth : -sidebarWidth);
+    setSidebarOpen(!sidebarOpen);
+  };
   const linkZoom = useStore((s) => s.linkZoom);
   const setLinkZoom = useStore((s) => s.setLinkZoom);
 
@@ -170,7 +178,7 @@ export default function App() {
             <Tooltip title={sidebarOpen ? 'Hide the panels' : 'Show the panels'}>
               <IconButton
                 size="small"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={togglePanels}
                 sx={{
                   position: 'absolute',
                   zIndex: 6,

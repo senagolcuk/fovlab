@@ -40,8 +40,6 @@ import {
   FIT_MARGIN,
   fitIso,
   fitOrtho,
-  isoMetresPerPixel,
-  isoScreenAxes,
   sceneBounds,
   vehicleCentre,
   type OrthoName,
@@ -378,62 +376,6 @@ export default function Stage() {
    */
   const fittedNonce = useRef(-1);
   const maximizedBefore = useRef<ViewName | null>(null);
-
-  /**
-   * Holds the drawing still when the viewport area changes size.
-   *
-   * A pane keeps the world point named by its `pan` at its own centre, so widening the area moves
-   * that centre across the window and the drawing slides with it — hiding the panels shifted
-   * everything by half of 360 px. Panning each view by however far its centre moved leaves the
-   * picture exactly where it was, and the space that opens up shows more scene rather than the
-   * same scene somewhere else.
-   *
-   * Declared before the fit effects so that a maximise, which does want a refit, wins.
-   */
-  const anchor = useRef<{ left: number; top: number; rects: Record<ViewName, Rect> } | null>(null);
-
-  useEffect(() => {
-    const el = hostRef.current;
-    if (!el || size.width === 0 || size.height === 0) return;
-
-    const box = el.getBoundingClientRect();
-    const previous = anchor.current;
-    anchor.current = { left: box.left, top: box.top, rects };
-    if (!previous) return;
-
-    const store = useStore.getState();
-
-    for (const name of VIEW_NAMES) {
-      const before = previous.rects[name];
-      const after = rects[name];
-      // A pane that was not on screen has no position to preserve.
-      if (before.width === 0 || after.width === 0) continue;
-
-      const dx =
-        box.left + after.x + after.width / 2 - (previous.left + before.x + before.width / 2);
-      const dy =
-        box.top + after.y + after.height / 2 - (previous.top + before.y + before.height / 2);
-      if (dx === 0 && dy === 0) continue;
-
-      if (name === 'ISO') {
-        const iso = store.views.ISO;
-        const mpp = isoMetresPerPixel(iso, after.height);
-        const { right, up } = isoScreenAxes(iso);
-        store.setIsoView({
-          target: [
-            iso.target[0] + right[0] * dx * mpp - up[0] * dy * mpp,
-            iso.target[1] + right[1] * dx * mpp - up[1] * dy * mpp,
-            iso.target[2] + right[2] * dx * mpp - up[2] * dy * mpp,
-          ],
-        });
-      } else {
-        const view = store.views[name];
-        store.setOrthoView(name, {
-          pan: [view.pan[0] + dx / view.zoom, view.pan[1] - dy / view.zoom],
-        });
-      }
-    }
-  }, [rects, size.width, size.height]);
 
   useEffect(() => {
     if (size.width === 0 || size.height === 0) return;
